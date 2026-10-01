@@ -6,6 +6,7 @@ import {
   drawBalancedTeams,
   listedTeams,
   payout,
+  scrambleBoards,
   scrambleFlights,
   scrambleLeaderboard,
   scrambleRound,
@@ -164,4 +165,55 @@ test("flights by team handicap, lowest first, extras to the top flights", () => 
   const teams = Array.from({ length: 5 }, (_, t) => ({ id: "t" + t, name: "t" + t, playerIds: [0, 1, 2, 3].map((k) => "p" + (t * 4 + k)) }));
   const flights = scrambleFlights(event({ players, teams }), 2);
   assert.deepEqual(flights, [["t0", "t1", "t2"], ["t3", "t4"]]);
+});
+
+// ---- Team handicap setting (all four options) ----
+// Course handicaps 4, 10, 16, 22 (rating 72 / slope 113 / par 72 = index).
+const four = { id: "t", name: "t", playerIds: ["d", "b", "a", "c"] };
+
+test("setting: no setting means USGA, same as choosing it", () => {
+  assert.equal(scrambleTeamHandicap(event(), four), 8);
+  assert.equal(scrambleTeamHandicap(event({ teamHandicap: { method: "usga" } }), four), 8);
+});
+
+test("setting: custom 20/15/10/5", () => {
+  // 0.8 + 1.5 + 1.6 + 1.1 = 5.0 -> 5
+  const ev = event({ teamHandicap: { method: "custom", percents: { 4: [20, 15, 10, 5] } } });
+  assert.equal(scrambleTeamHandicap(ev, four), 5);
+});
+
+test("setting: custom 25/20/15/10 gives exactly the USGA answer", () => {
+  const ev = event({ teamHandicap: { method: "custom", percents: { 4: [25, 20, 15, 10] } } });
+  for (const set of [[4, 10, 16, 22], [0, 0, 0, 25], [2, 2, 3, 5], [-1.3, 7.7, 12.2, 31.9]]) {
+    const players = set.map((ix, i) => p("x" + i, ix));
+    const team = { id: "t", name: "t", playerIds: players.map((x) => x.id) };
+    assert.equal(scrambleTeamHandicap({ ...ev, players }, team), scrambleTeamHandicap(event({ players }), team));
+  }
+});
+
+test("setting: custom for 4-man only; a 2-man team falls back to USGA 35/15", () => {
+  const ev = event({ teamHandicap: { method: "custom", percents: { 4: [20, 15, 10, 5] } } });
+  assert.equal(scrambleTeamHandicap(ev, { id: "x", name: "x", playerIds: ["a", "b"] }), 3); // 1.4 + 1.5 = 2.9
+  const ev2 = event({ teamHandicap: { method: "custom", percents: { 4: [20, 15, 10, 5], 2: [25, 10] } } });
+  assert.equal(scrambleTeamHandicap(ev2, { id: "x", name: "x", playerIds: ["a", "b"] }), 2); // 1.0 + 1.0
+});
+
+test("setting: percent of combined handicaps", () => {
+  // (4 + 10 + 16 + 22) = 52 x 10% = 5.2 -> 5 ; x 15% = 7.8 -> 8
+  assert.equal(scrambleTeamHandicap(event({ teamHandicap: { method: "combined", percent: 10 } }), four), 5);
+  assert.equal(scrambleTeamHandicap(event({ teamHandicap: { method: "combined", percent: 15 } }), four), 8);
+});
+
+test("setting: percent of combined is halved for a 9-hole round", () => {
+  const ev = event({ rounds: ["front"], teamHandicap: { method: "combined", percent: 10 } });
+  assert.equal(scrambleTeamHandicap(ev, four, 0), 3); // 5.2 / 2 = 2.6 -> 3
+});
+
+test("setting: none means no strokes, net equals gross, and only the gross board shows", () => {
+  const ev = event({ teamHandicap: { method: "none" }, scores: [{ t1: card((h) => PARS[h]) }] });
+  assert.equal(scrambleTeamHandicap(ev, ev.teams[0]), 0);
+  const r = scrambleRound(ev, ev.teams[0], 0);
+  assert.equal(r.net, r.gross);
+  assert.deepEqual(scrambleBoards(ev), ["gross"]);
+  assert.deepEqual(scrambleBoards(event()), ["gross", "net"]);
 });

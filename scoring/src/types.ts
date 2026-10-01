@@ -60,7 +60,26 @@ export interface HandicapLimits {
 /** One gross score per team per hole, or null if not entered yet. */
 export type TeamCards = Record<string, (number | null)[]>;
 
+/**
+ * How a scramble team's handicap is figured. Percentages are whole numbers
+ * (25 = 25%). Every method uses unrounded course handicaps, rounds half up at
+ * the end, and halves the total first for a 9-hole round.
+ *
+ * - usga:     USGA weights, low to high. 4: 25/20/15/10, 3: 20/15/10, 2: 35/15. (Club default.)
+ * - custom:   your own percentages, low to high, per team size. A team size
+ *             with no list of its own uses the USGA weights for that size.
+ * - combined: a percent of all players' course handicaps added together.
+ * - none:     no handicaps. Gross only; the net board is hidden.
+ */
+export type TeamHandicapRule =
+  | { method: "usga" }
+  | { method: "custom"; percents: { 2?: number[]; 3?: number[]; 4?: number[] } }
+  | { method: "combined"; percent: number }
+  | { method: "none" };
+
 export interface ScrambleEvent {
+  /** Defaults to { method: "usga" }. */
+  teamHandicap?: TeamHandicapRule;
   course: Course;
   players: Player[];
   teams: Team[];

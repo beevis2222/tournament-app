@@ -17,6 +17,7 @@ export function fromPrototypeScramble(ev: Any): ScrambleEvent {
   });
   const statuses = ev.pairings?.status ?? {};
   return {
+    teamHandicap: e.scoring === "gross" ? { method: "none" } : { method: "usga" },
     course: {
       pars: e.pars,
       si: e.si,

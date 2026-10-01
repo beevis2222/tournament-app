@@ -1,7 +1,8 @@
 // Scramble scoring. Club rules (docs/rules/scramble.md):
-// - Team handicap: USGA weights on unrounded course handicaps, low to high
-//   (4-person 25/20/15/10, 3-person 20/15/10, 2-person 35/15), then rounded;
-//   halved before rounding for a 9-hole round.
+// - Team handicap: set per event (see TeamHandicapRule). Club default is USGA
+//   weights on unrounded course handicaps, low to high (4-person 25/20/15/10,
+//   3-person 20/15/10, 2-person 35/15), then rounded; halved before rounding
+//   for a 9-hole round. Custom percentages, percent of combined, or none.
 // - Gross and net are separate leaderboards; a team can win both.
 // - No tiebreak: tied teams share the position and split the prize money.
 
@@ -18,13 +19,41 @@ function byId(ev: ScrambleEvent): Map<string, Player> {
   return new Map(ev.players.map((p) => [p.id, p]));
 }
 
+/** True when the event uses handicaps at all (anything but "none"). */
+export function scrambleHasNet(ev: ScrambleEvent): boolean {
+  return (ev.teamHandicap?.method ?? "usga") !== "none";
+}
+
+/** Which leaderboards the event shows: always gross, plus net unless handicaps are off. */
+export function scrambleBoards(ev: ScrambleEvent): ("gross" | "net")[] {
+  return scrambleHasNet(ev) ? ["gross", "net"] : ["gross"];
+}
+
+/** Weights (as fractions) for a team of this size under the event's rule. */
+function weightsFor(ev: ScrambleEvent, size: number): number[] {
+  const usga = SCRAMBLE_WEIGHTS[size] ?? SCRAMBLE_WEIGHTS[4];
+  const rule = ev.teamHandicap;
+  if (rule?.method === "custom") {
+    const own = rule.percents[size as 2 | 3 | 4];
+    if (own && own.length) return own.map((pct) => pct / 100);
+  }
+  return usga;
+}
+
 /** Team handicap for a round (or for an 18-hole round when round is omitted). */
 export function scrambleTeamHandicap(ev: ScrambleEvent, team: Team, round?: number): number {
+  const rule = ev.teamHandicap ?? { method: "usga" };
+  if (rule.method === "none") return 0;
   const players = byId(ev);
   const ps = team.playerIds.map((id) => players.get(id)).filter((p): p is Player => !!p);
-  const w = SCRAMBLE_WEIGHTS[ps.length] ?? SCRAMBLE_WEIGHTS[4];
   const ch = ps.map((p) => courseHandicap(ev.course, p, ev.limits, team, players)).sort((a, b) => a - b);
-  const v = ch.reduce((sum, c, i) => sum + c * (i < w.length ? w[i] : 0), 0);
+  let v: number;
+  if (rule.method === "combined") {
+    v = ch.reduce((sum, c) => sum + c, 0) * (rule.percent / 100);
+  } else {
+    const w = weightsFor(ev, ps.length);
+    v = ch.reduce((sum, c, i) => sum + c * (i < w.length ? w[i] : 0), 0);
+  }
   const nine = round !== undefined && holesInPlay(ev.holes, ev.rounds[round]).length === 9;
   return jsRound(nine ? v / 2 : v);
 }
