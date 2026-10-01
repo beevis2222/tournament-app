@@ -80,6 +80,8 @@ export type TeamHandicapRule =
 export interface ScrambleEvent {
   /** Defaults to { method: "usga" }. */
   teamHandicap?: TeamHandicapRule;
+  /** Most strokes any team gets in a round, after rounding. Empty = no limit. */
+  maxTeamHandicap?: number | null;
   course: Course;
   players: Player[];
   teams: Team[];

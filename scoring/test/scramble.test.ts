@@ -6,6 +6,7 @@ import {
   drawBalancedTeams,
   listedTeams,
   payout,
+  payoutAmounts,
   scrambleBoards,
   scrambleFlights,
   scrambleLeaderboard,
@@ -216,4 +217,61 @@ test("setting: none means no strokes, net equals gross, and only the gross board
   assert.equal(r.net, r.gross);
   assert.deepEqual(scrambleBoards(ev), ["gross"]);
   assert.deepEqual(scrambleBoards(event()), ["gross", "net"]);
+});
+
+// ---- Maximum team handicap ----
+test("max team handicap: caps strokes after rounding", () => {
+  assert.equal(scrambleTeamHandicap(event({ maxTeamHandicap: 6 }), four), 6); // USGA 8 -> 6
+  assert.equal(scrambleTeamHandicap(event({ maxTeamHandicap: 10 }), four), 8); // under the max, unchanged
+  assert.equal(scrambleTeamHandicap(event({ maxTeamHandicap: null }), four), 8); // empty = no limit
+});
+
+test("max team handicap: works with every method and moves the strokes on the card", () => {
+  const ev = event({ maxTeamHandicap: 4, teamHandicap: { method: "combined", percent: 15 }, scores: [{ t1: card((h) => PARS[h]) }] });
+  assert.equal(scrambleTeamHandicap(ev, ev.teams[0]), 4); // 7.8 -> 8 -> capped 4
+  assert.equal(scrambleRound(ev, ev.teams[0], 0).netToPar, -4);
+});
+
+test("max team handicap: halved for a 9-hole round", () => {
+  // USGA 7.6 / 2 = 3.8 -> 4 strokes over nine holes
+  assert.equal(scrambleTeamHandicap(event({ rounds: ["front"], maxTeamHandicap: 6 }), four, 0), 3); // max 6 -> 3
+  assert.equal(scrambleTeamHandicap(event({ rounds: ["front"], maxTeamHandicap: 5 }), four, 0), 3); // 2.5 -> 3
+  assert.equal(scrambleTeamHandicap(event({ rounds: ["front"], maxTeamHandicap: 8 }), four, 0), 4); // max 4, unchanged
+  // an 18-hole round in the same event keeps the full max
+  const ev = event({ rounds: ["full", "back"], maxTeamHandicap: 6 });
+  assert.equal(scrambleTeamHandicap(ev, four, 0), 6);
+  assert.equal(scrambleTeamHandicap(ev, four, 1), 3);
+});
+
+test("max team handicap: plus teams are not affected", () => {
+  const players = [p("a", -4), p("b", -3), p("c", -2), p("d", -1)];
+  const ev = event({ players, maxTeamHandicap: 2 });
+  assert.equal(scrambleTeamHandicap(ev, { id: "t", name: "t", playerIds: ["a", "b", "c", "d"] }), -2); // -2.4 -> -2
+});
+
+// ---- Gift card prizes ----
+test("gift cards: fixed amount per place", () => {
+  const rows = [{ id: "a", position: 1, eligible: true }, { id: "b", position: 2, eligible: true }, { id: "c", position: 3, eligible: true }];
+  const m = payoutAmounts(rows, [150, 100, 50]);
+  assert.deepEqual([m.get("a"), m.get("b"), m.get("c")], [150, 100, 50]);
+});
+
+test("gift cards: ties share the combined amounts; nobody past the last prize gets one", () => {
+  const rows = [
+    { id: "a", position: 1, eligible: true }, { id: "b", position: 1, eligible: true },
+    { id: "c", position: 3, eligible: true }, { id: "d", position: 4, eligible: true },
+    { id: "w", position: null, eligible: false },
+  ];
+  const m = payoutAmounts(rows, [150, 100, 50]);
+  assert.equal(m.get("a"), 125);
+  assert.equal(m.get("b"), 125);
+  assert.equal(m.get("c"), 50);
+  assert.equal(m.has("d"), false);
+  assert.equal(m.has("w"), false);
+});
+
+test("gift cards: not rounded to whole dollars", () => {
+  const rows = ["a", "b", "c"].map((id) => ({ id, position: 1, eligible: true }));
+  const m = payoutAmounts(rows, [100]);
+  assert.ok(Math.abs(m.get("a")! - 33.333333) < 1e-5); // shows as $33.33
 });

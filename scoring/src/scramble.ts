@@ -3,6 +3,8 @@
 //   weights on unrounded course handicaps, low to high (4-person 25/20/15/10,
 //   3-person 20/15/10, 2-person 35/15), then rounded; halved before rounding
 //   for a 9-hole round. Custom percentages, percent of combined, or none.
+// - Optional maximum team handicap: no team gets more strokes than that in an
+//   18-hole round (applied after rounding); halved, rounded half up, for 9 holes.
 // - Gross and net are separate leaderboards; a team can win both.
 // - No tiebreak: tied teams share the position and split the prize money.
 
@@ -55,7 +57,11 @@ export function scrambleTeamHandicap(ev: ScrambleEvent, team: Team, round?: numb
     v = ch.reduce((sum, c, i) => sum + c * (i < w.length ? w[i] : 0), 0);
   }
   const nine = round !== undefined && holesInPlay(ev.holes, ev.rounds[round]).length === 9;
-  return jsRound(nine ? v / 2 : v);
+  const hcp = jsRound(nine ? v / 2 : v);
+  const max = ev.maxTeamHandicap;
+  if (max === null || max === undefined) return hcp;
+  const limit = nine ? jsRound(max / 2) : max; // halved for 9 holes, round half up
+  return hcp > limit ? limit : hcp;
 }
 
 export interface RoundResult {

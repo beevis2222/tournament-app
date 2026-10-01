@@ -27,3 +27,12 @@ export function payout(rows: Placed[], purse: number, split: number[]): Map<stri
   }
   return out;
 }
+
+/**
+ * Fixed prize per place, like shop gift cards: amounts = [150, 100, 50] for
+ * 1st-3rd. Ties share the combined amounts for the places they cover, the
+ * same way as a purse (two tied for 1st each get (150 + 100) / 2).
+ */
+export function payoutAmounts(rows: Placed[], amounts: number[]): Map<string, number> {
+  return payout(rows, amounts.reduce((a, b) => a + b, 0), amounts);
+}
