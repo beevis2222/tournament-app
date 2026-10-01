@@ -136,10 +136,10 @@ Players never make an account. They scan the cart-sign QR code and enter their g
 
 | Phase | Deliverable | Why this order |
 |---|---|---|
-| **0. Foundation** | Next.js project, `CLAUDE.md`, **scoring engine + tests** ported from `golf_math.py` | The math is the product. Prove it first, without any screens. |
-| **1. Shop-only member-member** | Events, field import, round robin, enter cards, standings, shootout, the 24x36 board print | It's your club's signature event, and one person at one computer can run it end to end. |
+| **0. Foundation** ✅ started | `CLAUDE.md`, **scoring engine + tests** (`scoring/`), verified against `golf_math.py` | The math is the product. Prove it first, without any screens. |
+| **1. Shop-only 4-man scramble** | Events, field import, team draw or listed teams, enter cards, gross + net leaderboards, prizes, pairings and cart sign prints | Justin's pick. It's the simplest scoring (one score per team per hole) and fits outings, so it's a great first slice. |
 | **2. Live** | Group PIN scoring on phones, realtime leaderboard, TV mode, public link | This is the jump past the prototype. |
-| **3. All formats** | Stroke play, match play brackets, scramble, skins, Stableford, the full print center | Builds on the same engine. |
+| **3. All formats** | Member-member (10-point matches + shootout), stroke play, match play brackets, skins, Stableford, the full print center | Builds on the same engine. |
 | **4. Polish and sell** | Offline scoring, AI setup, multiple clubs, billing, then GHIN through the USGA GPA program | Needed once a second club wants it. |
 
 ---
@@ -161,6 +161,6 @@ Players never make an account. They scan the cart-sign QR code and enter their g
 ---
 
 ## Open questions for Justin
-1. Is `fairway-tournament-prototype.html` saved somewhere on your computer? Putting it in this repo lets Claude Code copy its screens and check the math against it.
-2. Is member-member the right first event to build, or is another event coming up sooner?
+1. ~~Where is the prototype?~~ Saved at `prototype/fairway-tournament-prototype.html` (copied from the Claude artifact, version of 2026-09-30). It's a reference only. Don't edit it, and don't ship it.
+2. ~~First event?~~ 4-man scramble, gross and net. Rules are in `docs/rules/scramble.md`.
 3. Will staff besides you need their own logins in phase 1, or is it just you to start?

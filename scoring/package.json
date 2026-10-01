@@ -1,0 +1,13 @@
+{
+  "name": "@starter/scoring",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Starter's golf scoring engine. Pure TypeScript, no dependencies, verified against reference/golf_math.py.",
+  "type": "module",
+  "main": "src/index.ts",
+  "engines": { "node": ">=22.18" },
+  "scripts": {
+    "test": "node --test \"test/*.test.ts\"",
+    "fixtures": "python3 reference/make_scramble_fixtures.py"
+  }
+}
