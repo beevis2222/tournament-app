@@ -41,3 +41,39 @@ test("non-scramble events are skipped with a reason", () => {
   expect(r.bundles).toHaveLength(0);
   expect(r.skipped).toEqual([{ name: "Cup", reason: "matchplay isn't supported yet" }]);
 });
+
+test("start settings, flights, statuses, prizes and groups come across", () => {
+  const pars = [4, 4, 3, 5, 4, 4, 3, 4, 5, 4, 4, 3, 5, 4, 4, 3, 4, 5];
+  const ev = {
+    id: "x",
+    event: {
+      name: "Flighted", format: "scramble", scoring: "net", rounds: 2, teamSize: 2, holesMode: "18", rmode: {},
+      flights: 2, flightNames: ["Gold", "Silver"], start: "teetimes", startTime: "07:30", interval: 9,
+      prizes: { on: true, purse: 300, split: "50,30,20" }, pars, si: pars.map((_, i) => i + 1),
+      tees: [{ id: "blue", name: "Blue", rating: 68, slope: 120 }],
+    },
+    players: [1, 2, 3, 4].map((n) => ({ id: `p${n}`, name: `P${n}`, index: 10, tee: "blue" })),
+    pairings: {
+      teams: [
+        { id: "t0", players: ["p1", "p2"], label: "A", flight: 0 },
+        { id: "t1", players: ["p3", "p4"], label: "B", flight: 1 },
+      ],
+      status: { t0: "WD", t1: "DQ" },
+      rounds: [
+        [{ id: "r0g0", flight: 0, teams: ["t0"], start: "1" }, { id: "r0g1", flight: 1, teams: ["t1"], start: "10" }],
+        [{ id: "r1g0", flight: 0, teams: ["t0"], start: "8:00am" }, { id: "r1g1", flight: 1, teams: ["t1"], start: "1:30pm" }],
+      ],
+    },
+    cards: [{ t0: { team: [4, "x", "", null, 5, ...Array(13).fill(null)] } }, {}],
+  };
+  const b = readBackup(wrap([ev])).bundles[0];
+  expect(b.event.settings).toMatchObject({
+    start: "teetimes", startTime: "07:30", interval: 9, flights: 2, flightNames: ["Gold", "Silver"], prizes: [150, 90, 60], teamSize: 2,
+  });
+  expect(b.teams.map((t) => [t.label, t.flight, t.status])).toEqual([["A", 0, "WD"], ["B", 1, "DQ"]]);
+  const [r1, r2] = b.rounds;
+  const g = (rid: string) => b.groups.filter((x) => x.roundId === rid).map((x) => [x.startHole, x.startTime]);
+  expect(g(r1.id)).toEqual([["1", null], ["10", null]]);
+  expect(g(r2.id)).toEqual([[null, "08:00"], [null, "13:30"]]);
+  expect(b.scores.map((s) => [s.hole, s.gross])).toEqual([[1, 4], [5, 5]]);
+});

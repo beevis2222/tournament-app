@@ -29,7 +29,27 @@ export function readBackup(text: string): BackupResult {
   return result;
 }
 
-const isTime = (s: string) => /^\d{1,2}:\d{2}$/.test(s);
+/** "8:00am" / "1:30pm" (or already 24-hour) -> "HH:MM"; null for anything else (a hole label like "3B"). */
+function toTime24(s: string): string | null {
+  const m = /^(\d{1,2}):(\d{2})\s*(am|pm)?$/i.exec(s.trim());
+  if (!m) return null;
+  let h = Number(m[1]);
+  const ap = m[3]?.toLowerCase();
+  if (ap === "pm" && h < 12) h += 12;
+  if (ap === "am" && h === 12) h = 0;
+  if (h > 23 || Number(m[2]) > 59) return null;
+  return String(h).padStart(2, "0") + ":" + m[2];
+}
+
+/** Prototype prizes are {on, purse, split}; when on, turn purse and split into per-place amounts. Otherwise undefined (defaults). */
+function prizeAmounts(pz: Any): number[] | undefined {
+  if (!pz?.on) return undefined;
+  const purse = Number(pz.purse) || 0;
+  const split: number[] = (Array.isArray(pz.split) ? pz.split.map(Number) : String(pz.split ?? "").split(/[^0-9.]+/).map(Number)).filter((x: number) => x > 0);
+  const sum = split.reduce((a, b) => a + b, 0);
+  if (purse <= 0 || !sum) return undefined;
+  return split.map((x) => Math.round((purse * x * 100) / sum) / 100);
+}
 const defined = <T>(x: T | undefined): x is T => x !== undefined;
 
 function importScramble(ev: Any): EventBundle {
@@ -43,7 +63,6 @@ function importScramble(ev: Any): EventBundle {
 
   const protoTeams: Any[] = ev.pairings?.teams ?? [];
   const protoRounds: Any[] = Array.isArray(ev.pairings?.rounds) ? ev.pairings.rounds : [];
-  const startsAreTimes = protoRounds.some((g) => Array.isArray(g) && g.some((x: Any) => isTime(String(x?.start ?? ""))));
 
   const settings = EventSettings.parse({
     holes: e.holesMode ?? "18",
@@ -52,7 +71,11 @@ function importScramble(ev: Any): EventBundle {
     teamHandicap: e.scoring === "gross" ? { method: "none" } : { method: "usga" },
     limits: e.limits ?? undefined,
     flights: Number(e.flights) >= 1 ? Math.min(6, Math.trunc(Number(e.flights))) : undefined,
-    start: startsAreTimes ? "teetimes" : undefined,
+    start: e.start === "teetimes" ? "teetimes" : "shotgun",
+    startTime: toTime24(String(e.startTime ?? "")) ?? undefined,
+    interval: Number.isFinite(Number(e.interval)) && e.interval !== "" && e.interval != null ? Math.min(20, Math.max(5, Math.round(Number(e.interval)))) : undefined,
+    flightNames: Array.isArray(e.flightNames) && e.flightNames.every((n: Any) => typeof n === "string") ? e.flightNames : undefined,
+    prizes: prizeAmounts(e.prizes),
   });
 
   const teeIds = new Map<string, string>();
@@ -108,11 +131,12 @@ function importScramble(ev: Any): EventBundle {
     if (!Array.isArray(list)) return;
     list.forEach((g: Any, sort: number) => {
       const start = g?.start == null ? null : String(g.start);
+      const time = start ? toTime24(start) : null;
       groups.push({
         id: crypto.randomUUID(),
         roundId: round.id,
-        startHole: start && !isTime(start) ? start : null,
-        startTime: start && isTime(start) ? start.padStart(5, "0") : null,
+        startHole: start && !time ? start : null,
+        startTime: time,
         label: g?.label ?? `Group ${sort + 1}`,
         sort,
         teamIds: (g?.teams ?? []).map((tid: string) => teamIds.get(tid)).filter(defined),
@@ -128,7 +152,9 @@ function importScramble(ev: Any): EventBundle {
       if (!Array.isArray(row)) continue;
       row.forEach((v: Any, h: number) => {
         if (v === null || v === undefined || v === "") return;
-        scores.push({ roundId: round.id, teamId, hole: h + 1, gross: Math.trunc(Number(v)) });
+        const gross = Math.trunc(Number(v));
+        if (Number.isNaN(gross)) return;
+        scores.push({ roundId: round.id, teamId, hole: h + 1, gross });
       });
     }
   });
