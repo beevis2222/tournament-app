@@ -1,0 +1,67 @@
+/* Print pages: plain black on white, US Letter. */
+@page { size: letter; margin: 0.5in; }
+
+.pr-root { background: #fff; color: #000; min-height: 100vh; font-family: Arial, Helvetica, sans-serif; font-size: 11pt; line-height: 1.35; }
+.pr-page { max-width: 7.5in; margin: 0 auto; padding: 0.3in 0.25in 0.6in; }
+.pr-page a { color: #000; }
+
+.pr-bar { display: flex; justify-content: space-between; align-items: center; margin: 0 0 16px; }
+.pr-bar a { font-weight: 600; }
+.pr-bar button { font: inherit; font-weight: 600; padding: 8px 18px; border: 1px solid #000; background: #fff; color: #000; border-radius: 6px; cursor: pointer; }
+
+.pr-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; border-bottom: 2px solid #000; padding-bottom: 6px; margin: 0 0 14px; }
+.pr-event { font-size: 18pt; font-weight: 700; }
+.pr-date { font-size: 10pt; color: #333; }
+.pr-title { font-size: 14pt; font-weight: 700; text-align: right; }
+.pr-note { font-size: 10pt; color: #333; margin: 6px 0; }
+.pr-flight { font-size: 14pt; margin: 18px 0 6px; }
+.pr-keep { break-inside: avoid; }
+
+.pr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pr-box { border: 1px solid #000; padding: 6px 8px; break-inside: avoid; }
+.pr-start { font-size: 14pt; font-weight: 700; }
+.pr-sub { font-size: 10pt; font-weight: 700; margin-top: 3px; }
+.pr-line { display: flex; justify-content: space-between; gap: 8px; }
+
+.pr-alpha { columns: 2; column-gap: 0.4in; }
+.pr-alpha .pr-line { border-bottom: 1px solid #ccc; padding: 2px 0; break-inside: avoid; }
+
+.pr-table { width: 100%; border-collapse: collapse; }
+.pr-table th, .pr-table td { border-bottom: 1px solid #999; padding: 4px 6px; text-align: left; vertical-align: top; }
+.pr-table th { border-bottom: 2px solid #000; }
+.pr-table .r { text-align: right; }
+.pr-table .big { font-weight: 700; }
+.pr-table small { color: #444; }
+.pr-table tr.gstart td { border-top: 2px solid #000; }
+.pr-st { font-weight: 700; font-size: 13pt; }
+.pr-st small { display: block; font-size: 9pt; font-weight: 400; }
+.pr-table .ck { border-left: 1px solid #999; }
+
+.pr-cards { display: block; }
+.pr-card { border: 1px solid #000; padding: 8px 10px; margin: 0 0 0.3in; break-inside: avoid; page-break-inside: avoid; }
+.pr-card-top { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+.pr-sct { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.pr-sct th, .pr-sct td { border: 1px solid #000; text-align: center; padding: 2px 0; font-size: 9pt; }
+.pr-sct .nm { width: 1.1in; text-align: left; padding-left: 4px; font-weight: 700; }
+.pr-sct .mini td, .pr-sct tr.mini td { font-size: 8pt; }
+.pr-sct .sub { background: #eee; }
+.pr-sct td.dotcell { height: 0.4in; vertical-align: top; font-size: 11pt; }
+.pr-players { font-size: 9pt; margin-top: 6px; }
+.pr-sig { display: flex; gap: 0.5in; margin-top: 0.25in; }
+.pr-sig span { flex: 1; border-top: 1px solid #000; font-size: 8pt; padding-top: 2px; }
+
+.pr-signs { display: block; }
+.pr-sign { height: 4.7in; margin: 0 0 0.3in; border: 2px solid #000; padding: 0.3in; text-align: center; break-inside: avoid; page-break-inside: avoid; overflow: hidden; }
+.pr-sign-start { font-size: 54pt; font-weight: 700; line-height: 1.1; }
+.pr-sign-ev { font-size: 14pt; margin-top: 4px; }
+.pr-sign-team { font-size: 24pt; font-weight: 700; margin: 0.15in 0 0.1in; }
+.pr-sign-name { font-size: 20pt; }
+.pr-sign-name span { font-size: 14pt; color: #444; }
+
+@media print {
+  .pr-bar { display: none; }
+  html, body { background: #fff; }
+  .pr-root { min-height: 0; }
+  .pr-page { max-width: none; padding: 0; }
+  .pr-sign:nth-child(2n) { margin-bottom: 0; }
+}
