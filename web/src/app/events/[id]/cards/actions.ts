@@ -1,0 +1,60 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
+import { currentStaff, SIGNED_OUT } from "@/lib/db/auth";
+import { createServerSupabase } from "@/lib/supabase/server";
+
+type Result = { ok: true } | { ok: false; error: string };
+
+const SAVE_FAILED = "That didn't save. Check your connection and try again.";
+const BAD = "That didn't look right. Reload the page and try again.";
+const refresh = () => revalidatePath("/events/[id]", "layout");
+const uuid = z.string().uuid();
+
+/** Saves (or, with null, clears) one team's gross score on one hole. Every change is logged by the database. */
+export async function saveScore(roundId: string, teamId: string, hole: number, gross: number | null): Promise<Result> {
+  if (!(await currentStaff())) return { ok: false, error: SIGNED_OUT };
+  const ok =
+    uuid.safeParse(roundId).success &&
+    uuid.safeParse(teamId).success &&
+    Number.isInteger(hole) && hole >= 1 && hole <= 18 &&
+    (gross === null || (Number.isInteger(gross) && gross >= 1 && gross <= 20));
+  if (!ok) return { ok: false, error: BAD };
+  const supabase = await createServerSupabase();
+  // The generated type says p_gross is a number; null clears the hole.
+  const { error } = await supabase.rpc("save_score", {
+    p_round: roundId,
+    p_team: teamId,
+    p_hole: hole,
+    p_gross: gross as number,
+    p_screen: "enter-cards",
+  });
+  if (error) return { ok: false, error: SAVE_FAILED };
+  refresh();
+  return { ok: true };
+}
+
+/** Full, Front 9 only, Back 9 only or Called off. Scores already entered are kept. */
+export async function setRoundMode(roundId: string, mode: string): Promise<Result> {
+  if (!(await currentStaff())) return { ok: false, error: SIGNED_OUT };
+  const m = z.enum(["full", "front", "back", "called_off"]).safeParse(mode);
+  if (!uuid.safeParse(roundId).success || !m.success) return { ok: false, error: BAD };
+  const supabase = await createServerSupabase();
+  const { data, error } = await supabase.from("rounds").update({ mode: m.data }).eq("id", roundId).select("id");
+  if (error || !data?.length) return { ok: false, error: SAVE_FAILED };
+  refresh();
+  return { ok: true };
+}
+
+/** null = playing; otherwise WD, DQ or NS (no show). */
+export async function setTeamStatus(teamId: string, status: string | null): Promise<Result> {
+  if (!(await currentStaff())) return { ok: false, error: SIGNED_OUT };
+  const s = z.enum(["WD", "DQ", "NS"]).nullable().safeParse(status);
+  if (!uuid.safeParse(teamId).success || !s.success) return { ok: false, error: BAD };
+  const supabase = await createServerSupabase();
+  const { data, error } = await supabase.from("teams").update({ status: s.data }).eq("id", teamId).is("deleted_at", null).select("id");
+  if (error || !data?.length) return { ok: false, error: SAVE_FAILED };
+  refresh();
+  return { ok: true };
+}

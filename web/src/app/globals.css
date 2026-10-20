@@ -84,3 +84,10 @@ fieldset.group legend{font-family:var(--display);font-size:20px;padding:0 6px}
 .holes input{width:100%;padding:6px 2px;text-align:center;font:inherit;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:6px}
 .tee-card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px;margin:0 0 12px}
 .ok{color:var(--green);margin:0 0 14px}
+.hole-grid{border-collapse:collapse;width:100%}
+.hole-grid th,.hole-grid td{text-align:center;padding:4px;border-bottom:1px solid var(--line);font-size:14px}
+.hole-grid th[scope=row]{text-align:left;font-weight:600;white-space:nowrap}
+.hole-grid .grid-sum{font-weight:600;background:var(--green-soft)}
+.hole-input{width:44px;padding:6px 4px;text-align:center;font:inherit;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:6px}
+.hole-input.bad{border-color:var(--under);box-shadow:0 0 0 2px var(--under)}
+.save-failed{margin:10px 0;padding:10px 12px;border:1px solid var(--under);border-radius:6px;color:var(--under)}
