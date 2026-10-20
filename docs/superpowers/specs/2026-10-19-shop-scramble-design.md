@@ -70,7 +70,7 @@ Tables (Postgres in Supabase). Every table has `club_id` (directly, or through i
 ## 3. Logins
 - Email and password through Supabase Auth.
 - First sign-in: Justin creates his account, and a one-time setup screen creates the club and makes him `pro`. After that, sign-up is closed: new people only get in by invite.
-- **Staff screen** (pro only): enter an email to send an invite, see who's on staff, remove someone (with Undo).
+- **Staff screen** (pro only): add a staff member's email, see who's on staff and who has signed up, remove someone (with Undo). The pro tells the new person to go to the sign-up page and create a password with that email. Sign-ups from emails not on the list are refused by the database. No invite email is sent, since that would need the secret service-role key (approved by Justin, 2026-10-19). Supabase's "Confirm email" setting is off.
 - Not signed in → every page sends you to the sign-in page.
 
 ## 4. Screens

@@ -23,9 +23,9 @@
 - Never edit `prototype/`. `scoring/` behavior must not change; `npm test` in `scoring/` must keep passing.
 - The repo `.gitignore` contains the Python rule `lib/`. Task 1 adds `!web/src/lib/` so app code is committed.
 
-## Spec adjustment (confirm with Justin at plan review)
+## Spec adjustment (approved by Justin 2026-10-19; spec §3 updated)
 
-Spec §3 says the pro "sends an invite". Sending invite emails requires the service-role key, which the spec forbids. This plan instead: the pro **adds a staff email** on the Staff screen; that person goes to the app's sign-up page and creates a password with that email. A database trigger rejects sign-ups from any email that isn't on the staff list (except the very first user, who creates the club). Supabase's "Confirm email" setting is turned off (its built-in mailer only sends to project team members). Update spec §3 to match once Justin agrees.
+Spec §3 says the pro "sends an invite". Sending invite emails requires the service-role key, which the spec forbids. This plan instead: the pro **adds a staff email** on the Staff screen; that person goes to the app's sign-up page and creates a password with that email. A database trigger rejects sign-ups from any email that isn't on the staff list (except the very first user, who creates the club). Supabase's "Confirm email" setting is turned off (its built-in mailer only sends to project team members).
 
 ## Review Focus
 
