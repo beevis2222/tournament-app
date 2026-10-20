@@ -25,10 +25,7 @@ export default async function EventsPage() {
   ]);
   if (live.error || removed.error) return <LoadError />;
 
-  const today = new Date().toISOString().slice(0, 10);
   const rows = (live.data ?? []) as EventRow[];
-  const upcoming = rows.filter((e) => e.date >= today).sort((a, b) => a.date.localeCompare(b.date));
-  const past = rows.filter((e) => e.date < today).sort((a, b) => b.date.localeCompare(a.date));
 
   return (
     <div className="wrap">
@@ -38,7 +35,7 @@ export default async function EventsPage() {
           <Link className="evbtn" href="/settings/staff">Staff</Link>
         </div>
       </header>
-      <EventsView upcoming={upcoming} past={past} deleted={(removed.data ?? []) as EventRow[]} />
+      <EventsView events={rows} deleted={(removed.data ?? []) as EventRow[]} />
     </div>
   );
 }

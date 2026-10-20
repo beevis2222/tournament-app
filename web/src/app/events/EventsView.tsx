@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Toast } from "@/components/Toast";
+import { localDate } from "@/lib/dates";
 import { restore, softDelete } from "@/lib/db/softDelete";
 import { TEMPLATES } from "@/lib/templates";
 import { createEvent } from "./new/actions";
@@ -34,7 +35,11 @@ function EventList({ rows, onDelete, busy }: { rows: EventRow[]; onDelete: (e: E
   );
 }
 
-export default function EventsView({ upcoming, past, deleted }: { upcoming: EventRow[]; past: EventRow[]; deleted: EventRow[] }) {
+export default function EventsView({ events, deleted }: { events: EventRow[]; deleted: EventRow[] }) {
+  // Split by the browser's local date so an evening event is not "past" (the server runs in UTC).
+  const today = localDate();
+  const upcoming = events.filter((e) => e.date >= today).sort((a, b) => a.date.localeCompare(b.date));
+  const past = events.filter((e) => e.date < today).sort((a, b) => b.date.localeCompare(a.date));
   const router = useRouter();
   const [error, setError] = useState("");
   const [undo, setUndo] = useState<EventRow | null>(null);
@@ -43,7 +48,7 @@ export default function EventsView({ upcoming, past, deleted }: { upcoming: Even
   function create(templateId: string) {
     setError("");
     startTransition(async () => {
-      const result = await createEvent(templateId); // redirects on success
+      const result = await createEvent(templateId, localDate()); // redirects on success
       if (result?.error) setError(result.error);
     });
   }

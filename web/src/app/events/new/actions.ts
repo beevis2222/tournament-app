@@ -8,8 +8,8 @@ import { EventSettings } from "@/lib/types";
 
 export type CreateResult = { error: string };
 
-/** Makes an event (and one rounds row per round) from a template, then opens its Details. */
-export async function createEvent(templateId: string): Promise<CreateResult> {
+/** Makes an event (dated `today`, the browser's local date) (and one rounds row per round) from a template, then opens its Details. */
+export async function createEvent(templateId: string, today: string): Promise<CreateResult> {
   const me = await currentStaff();
   if (!me) return { error: SIGNED_OUT };
   const template = TEMPLATES.find((t) => t.id === templateId);
@@ -22,7 +22,7 @@ export async function createEvent(templateId: string): Promise<CreateResult> {
     .insert({
       club_id: me.clubId,
       name: template.id === "blank" ? "New scramble" : template.name,
-      date: new Date().toISOString().slice(0, 10),
+      date: /^d{4}-d{2}-d{2}$/.test(today) ? today : new Date().toISOString().slice(0, 10),
       settings,
     })
     .select("id")

@@ -1,3 +1,4 @@
+import { fetchAll } from "@/lib/db/paging";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { EventSettings, type EventBundle } from "@/lib/types";
 
@@ -13,7 +14,7 @@ function rows<T>(res: { data: T[] | null; error: { message: string } | null }, w
   return check(res, what) ?? [];
 }
 
-/** Shown on Details until a course is chosen. Its id is "" so screens can tell. */
+/** Shown on Details until a course is chosen. Its id is "" so screens can tell (use hasCourse). */
 export const NO_COURSE: EventBundle["course"] = {
   id: "",
   name: "",
@@ -51,18 +52,26 @@ export async function loadEvent(id: string): Promise<EventBundle> {
       ? supabase.from("tees").select("id, name, rating, slope, pars, si, created_at").eq("course_id", ev.course_id).order("created_at")
       : Promise.resolve({ data: [], error: null }),
     supabase.from("rounds").select("id, number, mode").eq("event_id", id).lte("number", settings.rounds).order("number"),
-    supabase
-      .from("entries")
-      .select("id, golfer_id, index_used, nh, tee_id, alternate, created_at, golfers(name)")
-      .eq("event_id", id)
-      .is("deleted_at", null)
-      .order("created_at"),
-    supabase
-      .from("teams")
-      .select("id, label, flight, status, sort")
-      .eq("event_id", id)
-      .is("deleted_at", null)
-      .order("sort"),
+    fetchAll((from, to) =>
+      supabase
+        .from("entries")
+        .select("id, golfer_id, index_used, nh, tee_id, alternate, created_at, golfers(name)")
+        .eq("event_id", id)
+        .is("deleted_at", null)
+        .order("created_at")
+        .order("id")
+        .range(from, to),
+    ),
+    fetchAll((from, to) =>
+      supabase
+        .from("teams")
+        .select("id, label, flight, status, sort")
+        .eq("event_id", id)
+        .is("deleted_at", null)
+        .order("sort")
+        .order("id")
+        .range(from, to),
+    ),
   ]);
   const course = check(courseRes, "the course");
   const tees = rows(teesRes, "the tees");
@@ -74,13 +83,31 @@ export async function loadEvent(id: string): Promise<EventBundle> {
   const teamIds = teams.map((t) => t.id);
   const [membersRes, groupsRes, scoresRes] = await Promise.all([
     teamIds.length
-      ? supabase.from("team_members").select("team_id, entry_id, sort").in("team_id", teamIds).order("sort")
+      ? fetchAll((from, to) =>
+          supabase.from("team_members").select("team_id, entry_id, sort").in("team_id", teamIds).order("sort").order("entry_id").range(from, to),
+        )
       : Promise.resolve({ data: [], error: null }),
     roundIds.length
-      ? supabase.from("groups").select("id, round_id, start_hole, start_time, label, sort").in("round_id", roundIds).order("sort")
+      ? fetchAll((from, to) =>
+          supabase
+            .from("groups")
+            .select("id, round_id, start_hole, start_time, label, sort")
+            .in("round_id", roundIds)
+            .order("sort")
+            .order("id")
+            .range(from, to),
+        )
       : Promise.resolve({ data: [], error: null }),
     roundIds.length
-      ? supabase.from("scores").select("round_id, team_id, hole, gross").in("round_id", roundIds).not("team_id", "is", null)
+      ? fetchAll((from, to) =>
+          supabase
+            .from("scores")
+            .select("id, round_id, team_id, hole, gross")
+            .in("round_id", roundIds)
+            .not("team_id", "is", null)
+            .order("id")
+            .range(from, to),
+        )
       : Promise.resolve({ data: [], error: null }),
   ]);
   const members = rows(membersRes, "the teams");
@@ -89,7 +116,12 @@ export async function loadEvent(id: string): Promise<EventBundle> {
 
   const groupIds = groups.map((g) => g.id);
   const groupTeams = groupIds.length
-    ? rows(await supabase.from("group_teams").select("group_id, team_id, sort").in("group_id", groupIds).order("sort"), "the pairings")
+    ? rows(
+        await fetchAll((from, to) =>
+          supabase.from("group_teams").select("group_id, team_id, sort").in("group_id", groupIds).order("sort").order("team_id").range(from, to),
+        ),
+        "the pairings",
+      )
     : [];
 
   const entryIds = new Set(entries.map((e) => e.id));

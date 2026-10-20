@@ -1,8 +1,14 @@
 import type { Player, ScrambleEvent, Team, TeamCards, Tee } from "@starter/scoring";
 import type { EventBundle } from "./types";
 
+/** False until a course has been chosen for the event; screens show a "Choose a course" prompt instead of calling toEngine. */
+export function hasCourse(b: EventBundle): boolean {
+  return b.course.id !== "";
+}
+
 /** Turns the app's stored rows into the event the scoring engine expects. */
 export function toEngine(b: EventBundle): ScrambleEvent {
+  if (!hasCourse(b)) throw new Error("Choose a course for this event first.");
   const { settings } = b.event;
 
   const tees: Tee[] = b.tees.map((t) => ({

@@ -1,6 +1,6 @@
 import type { ScrambleEvent } from "@starter/scoring";
 import { EventSettings, type EventBundle } from "@/lib/types";
-import { toEngine } from "@/lib/toEngine";
+import { hasCourse, toEngine } from "@/lib/toEngine";
 
 const pars = [4, 4, 3, 5, 4, 4, 3, 5, 4, 4, 4, 3, 5, 4, 4, 3, 5, 4];
 const si = [7, 1, 15, 9, 3, 11, 17, 5, 13, 8, 2, 16, 10, 4, 12, 18, 6, 14];
@@ -115,4 +115,15 @@ test("settings defaults", () => {
 
 test("settings reject a bad interval", () => {
   expect(() => EventSettings.parse({ interval: 3 })).toThrow();
+});
+
+describe("no course chosen", () => {
+  const noCourse = (): EventBundle => ({ ...bundle(), course: { id: "", name: "", pars: Array(18).fill(4), si: pars.map((_, i) => i + 1) } });
+  it("toEngine refuses to run", () => {
+    expect(() => toEngine(noCourse())).toThrow("Choose a course for this event first.");
+  });
+  it("hasCourse tells the two cases apart", () => {
+    expect(hasCourse(noCourse())).toBe(false);
+    expect(hasCourse(bundle())).toBe(true);
+  });
 });
