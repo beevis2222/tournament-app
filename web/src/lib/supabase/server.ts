@@ -29,12 +29,13 @@ export async function getStaff(): Promise<StaffInfo | null> {
   const supabase = await createServerSupabase();
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return null;
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("staff")
     .select("club_id, role")
     .eq("user_id", auth.user.id)
     .is("removed_at", null)
     .maybeSingle();
+  if (error) throw new Error("staff lookup failed");
   if (!data) return null;
   return { userId: auth.user.id, clubId: data.club_id, role: data.role as "pro" | "staff" };
 }

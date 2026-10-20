@@ -1,8 +1,23 @@
 import { createServerSupabase, getStaff } from "@/lib/supabase/server";
 import StaffManager from "./StaffManager";
 
+function LoadError() {
+  return (
+    <main className="page">
+      <h1>Staff</h1>
+      <p className="error" role="alert">Couldn&apos;t load the staff list.</p>
+      <p><a href="/settings/staff">Retry</a></p>
+    </main>
+  );
+}
+
 export default async function StaffPage() {
-  const me = await getStaff();
+  let me;
+  try {
+    me = await getStaff();
+  } catch {
+    return <LoadError />;
+  }
   if (!me) return null; // the middleware sends signed-out people to sign-in
   if (me.role !== "pro") {
     return (
@@ -14,11 +29,12 @@ export default async function StaffPage() {
   }
 
   const supabase = await createServerSupabase();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("staff")
     .select("id, email, role, user_id")
     .is("removed_at", null)
     .order("invited_at");
+  if (error) return <LoadError />;
 
   const rows = (data ?? []).map((s) => ({
     id: s.id,

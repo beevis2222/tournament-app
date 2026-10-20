@@ -1,14 +1,17 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 export const TOAST_MS = 10_000;
 
 export function Toast({ message, onUndo, onDone }: { message: string; onUndo: () => void; onDone: () => void }) {
+  const done = useRef(onDone);
+  done.current = onDone;
+
   useEffect(() => {
-    const timer = setTimeout(onDone, TOAST_MS);
+    const timer = setTimeout(() => done.current(), TOAST_MS);
     return () => clearTimeout(timer);
-  }, [message, onDone]);
+  }, [message]);
 
   return (
     <div className="toast" role="status">
