@@ -6,6 +6,7 @@ Starter is a golf tournament manager for private clubs, built to replace Golf Ge
 - `docs/system-design.md`: stack, data model, screens, build order.
 - `docs/rules/`: club rules per format, as confirmed by Justin. The code must follow these.
 - `scoring/`: the scoring engine (pure TypeScript, no dependencies). Run `npm test` inside it.
+- `web/`: the Starter app itself (a Next.js website). Run `npm install` once at the top folder, then `npm run dev` and open http://localhost:3000. `npm test` at the top folder runs the scoring tests and the app tests together.
 - `prototype/fairway-tournament-prototype.html`: the working single-file prototype. It's a reference for screens and behavior. Don't edit it, and don't ship it.
 
 ## Rules

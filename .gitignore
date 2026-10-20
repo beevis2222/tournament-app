@@ -193,3 +193,6 @@ npm-debug.log*
 # --- OS / editor clutter ---
 .DS_Store
 Thumbs.db
+
+# Allow the web app source folder (the Python "lib/" rule above would hide it)
+!web/src/lib/

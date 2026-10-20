@@ -1,0 +1,21 @@
+/* Design tokens ported from prototype/fairway-tournament-prototype.html */
+:root{
+  --paper:#F6F8F5; --surface:#FFFFFF; --ink:#15233D; --muted:#5B6576; --line:#D3DAD2;
+  --green:#2F6B4F; --green-soft:#E3EEE7; --flag:#E4B429; --under:#C0392B;
+  --display:"Barlow Condensed","Arial Narrow",sans-serif;
+  --body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#0F1712; --surface:#17211B; --ink:#E7ECE8; --muted:#9AA79F; --line:#2B3830;
+    --green:#6DB38E; --green-soft:#1D2D23; --flag:#E9BE3E; --under:#FF7466;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0F1712; --surface:#17211B; --ink:#E7ECE8; --muted:#9AA79F; --line:#2B3830;
+  --green:#6DB38E; --green-soft:#1D2D23; --flag:#E9BE3E; --under:#FF7466;
+}
+
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5}
+h1,h2,h3{font-family:var(--display)}
