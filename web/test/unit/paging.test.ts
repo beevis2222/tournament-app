@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { fetchAll } from "@/lib/db/paging";
-import { localDate } from "@/lib/dates";
+import { isIsoDate, localDate } from "@/lib/dates";
 
 const fake = (total: number, calls: [number, number][] = []) => async (from: number, to: number) => {
   calls.push([from, to]);
@@ -36,5 +36,16 @@ describe("localDate", () => {
   it("uses local year, month and day", () => {
     expect(localDate(new Date(2026, 4, 2, 23, 30))).toBe("2026-05-02");
     expect(localDate(new Date(2026, 0, 9, 0, 5))).toBe("2026-01-09");
+  });
+});
+
+describe("isIsoDate", () => {
+  it("accepts only real YYYY-MM-DD dates", () => {
+    expect(isIsoDate("2026-10-20")).toBe(true);
+    expect(isIsoDate("2028-02-29")).toBe(true);
+    expect(isIsoDate("dddd-dd-dd")).toBe(false);
+    expect(isIsoDate("2026-02-30")).toBe(false);
+    expect(isIsoDate("2026-13-01")).toBe(false);
+    expect(isIsoDate("")).toBe(false);
   });
 });

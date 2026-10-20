@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { isIsoDate } from "@/lib/dates";
 import { currentStaff, SIGNED_OUT } from "@/lib/db/auth";
 import { TEMPLATES } from "@/lib/templates";
 import { createServerSupabase } from "@/lib/supabase/server";
@@ -22,7 +23,7 @@ export async function createEvent(templateId: string, today: string): Promise<Cr
     .insert({
       club_id: me.clubId,
       name: template.id === "blank" ? "New scramble" : template.name,
-      date: /^d{4}-d{2}-d{2}$/.test(today) ? today : new Date().toISOString().slice(0, 10),
+      date: isIsoDate(today) ? today : new Date().toISOString().slice(0, 10),
       settings,
     })
     .select("id")

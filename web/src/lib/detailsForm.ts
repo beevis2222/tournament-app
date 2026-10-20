@@ -1,3 +1,4 @@
+import { isIsoDate } from "@/lib/dates";
 import { EventSettings } from "@/lib/types";
 
 /** What the Details form holds: everything as text, so half-typed values are fine. */
@@ -66,7 +67,7 @@ export function parseDetails(v: DetailsValues): DetailsResult {
   const errors: Record<string, string> = {};
   const name = v.name.trim();
   if (!name) errors.name = "Give the event a name.";
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(v.date) || Number.isNaN(Date.parse(v.date))) errors.date = "Pick a date.";
+  if (!isIsoDate(v.date)) errors.date = "Pick a date.";
 
   const rounds = num(v.rounds, "rounds", errors);
   const flights = num(v.flights, "flights", errors);
