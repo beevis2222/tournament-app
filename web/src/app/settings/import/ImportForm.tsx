@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { MAX_BACKUP_BYTES } from "@/lib/importPlan";
+import { TOO_BIG } from "@/lib/importRun";
 import { importBackup, type ImportResult } from "./actions";
 
 export default function ImportForm() {
@@ -14,7 +15,7 @@ export default function ImportForm() {
     const file = input.files?.[0];
     if (!file) return;
     if (file.size > MAX_BACKUP_BYTES) {
-      setResult({ imported: [], skipped: [], failed: [], error: "That file is too big to be a backup (limit 5 MB)." });
+      setResult({ imported: [], skipped: [], failed: [], error: TOO_BIG });
       input.value = "";
       return;
     }
@@ -44,7 +45,7 @@ export default function ImportForm() {
             <p key={s.name + s.reason}>Not imported yet: {s.name} ({s.reason})</p>
           ))}
           {result.failed.map((n) => (
-            <p key={n} className="error">Couldn&apos;t import {n}.</p>
+            <p key={n} className="error">{n}</p>
           ))}
           {result.imported.length + result.skipped.length + result.failed.length === 0 && <p>Nothing to import.</p>}
           {result.imported.length > 0 && <p><Link href="/events">Go to Events</Link></p>}
