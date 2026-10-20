@@ -1,6 +1,6 @@
 import PrintBar from "@/components/PrintBar";
 import PrintHeader from "@/components/PrintHeader";
-import { printGroups } from "@/lib/printData";
+import { hcpText, printGroups } from "@/lib/printData";
 import { loadForPrint, type PrintParams, type PrintSearch } from "../load";
 
 export default async function PairingsPrint({ params, searchParams }: { params: PrintParams; searchParams: PrintSearch }) {
@@ -26,10 +26,10 @@ export default async function PairingsPrint({ params, searchParams }: { params: 
                     {t.label}
                     {t.hcp !== null ? ` (${t.hcp})` : ""}
                   </div>
-                  {t.players.map((p) => (
-                    <div key={p.name} className="pr-line">
+                  {t.players.map((p, i) => (
+                    <div key={i} className="pr-line">
                       <span>{p.name}</span>
-                      <span>{p.hcp && p.hcp !== "NH" ? `(${p.hcp})` : p.hcp}</span>
+                      <span>{hcpText(p.hcp) ? `(${hcpText(p.hcp)})` : ""}</span>
                     </div>
                   ))}
                 </div>

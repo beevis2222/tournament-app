@@ -1,5 +1,5 @@
 import { EventSettings, type EventBundle } from "@/lib/types";
-import { alphaRows, lastFirst, pickRound, printGroups, roundText, starterSheet } from "@/lib/printData";
+import { alphaRows, cartSets, lastFirst, pickRound, printGroups, roundText, starterSheet } from "@/lib/printData";
 
 const si = [7, 1, 15, 9, 3, 11, 17, 5, 13, 8, 2, 16, 10, 4, 12, 18, 6, 14];
 
@@ -78,4 +78,38 @@ test("round picker falls back to the first round", () => {
   expect(roundText(b, 2)).toBe("Round 2");
   b.rounds = [b.rounds[0]];
   expect(roundText(b, 1)).toBe("");
+});
+
+test("a pair of players takes one cart, and carts count on across groups", () => {
+  const sets = cartSets(printGroups(bundle(), "r1"));
+  expect(sets.map((c) => [c.cart, c.start, c.players.length])).toEqual([[1, "2", 2], [2, "2B", 2], [3, "12", 2]]);
+  expect(sets[0].teams).toEqual(["Team 2"]);
+  expect(sets[0].players.map((p) => p.name)).toEqual(["Cy Adams", "Di Moore"]);
+});
+
+test("an odd group ends with a one-player cart, and carts never mix groups", () => {
+  const b = bundle();
+  b.groups = [
+    { id: "a", roundId: "r1", startHole: "1", startTime: null, label: "", sort: 1, teamIds: ["t1"] }, // 2 players
+    { id: "b", roundId: "r1", startHole: "2", startTime: null, label: "", sort: 2, teamIds: ["t2", "t3"] }, // 4 players, 2 teams
+  ];
+  b.entries.push({ id: "e7", golferId: "g7", name: "Extra Guy", indexUsed: 10, nh: false, teeId: null, alternate: false });
+  b.teams[1].entryIds.push("e7"); // team 2 now has 3 players, so group b has 5
+  const sets = cartSets(printGroups(b, "r1"));
+  expect(sets.map((c) => c.players.length)).toEqual([2, 2, 2, 1]);
+  expect(sets[2].teams).toEqual(["Team 2", "Team 3"]);
+  expect(starterSheet(printGroups(b, "r1")).groups.map((g) => g.rows.map((r) => r.cart))).toEqual([[1, 1], [2, 2, 3, 3, 4]]);
+});
+
+test("no-handicap players show no handicap and the alpha sort is last then first", () => {
+  const b = bundle();
+  b.entries[0].nh = true;
+  b.entries[1].name = "Al Smithson";
+  b.entries[0].name = "Bob Smith";
+  b.teams[0].status = "WD";
+  const g = printGroups(b, "r1");
+  const rows = alphaRows(g);
+  expect(rows.find((r) => r.name === "Smith, Bob")!.hcp).toBe("");
+  expect(rows.map((r) => r.name).indexOf("Smith, Bob")).toBeLessThan(rows.map((r) => r.name).indexOf("Smithson, Al"));
+  expect(starterSheet(g).groups[1].rows[0].status).toBe("WD");
 });

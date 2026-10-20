@@ -48,7 +48,7 @@ export default async function StarterPrint({ params, searchParams }: { params: P
                       </td>
                     )}
                     <td>
-                      {r.name} <small>{r.team}</small>
+                      {r.name} <small>{r.team}</small>{r.status && <b> {r.status}</b>}
                     </td>
                     <td>{r.tee}</td>
                     {showHcp && <td className="r">{r.hcp}</td>}

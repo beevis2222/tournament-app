@@ -21,6 +21,7 @@ export interface PrintPlayer {
 }
 export interface PrintTeam {
   id: string;
+  status: "WD" | "DQ" | "NS" | null;
   label: string;
   /** Team handicap for the round; null when handicaps are off or there is no course. */
   hcp: number | null;
@@ -96,7 +97,7 @@ export function printGroups(b: EventBundle, roundId: string): PrintGroup[] {
         };
       });
       const hcp = ev && engTeam && roundIdx >= 0 && scrambleHasNet(ev) ? scrambleRound(ev, engTeam, roundIdx).handicap : null;
-      teams.push({ id: t.id, label: t.label, hcp, players });
+      teams.push({ id: t.id, status: t.status, label: t.label, hcp, players });
     }
     if (teams.length > 0) out.push({ id: g.id, start: startText(g), label: g.label, teams });
   }
@@ -109,18 +110,51 @@ export function lastFirst(name: string): string {
   return w.length > 1 ? `${w[w.length - 1]}, ${w.slice(0, -1).join(" ")}` : name.trim();
 }
 
+/** Handicap text for a sheet: nothing for no-handicap players, like the prototype. */
+export const hcpText = (hcp: string): string => (hcp === "NH" ? "" : hcp);
+
 export interface AlphaRow {
   name: string;
   hcp: string;
   start: string;
 }
 
+/** "Alan Reeves" -> "reeves alan": the prototype sorts on last name, then first. */
+function sortKey(name: string): string {
+  const w = name.trim().split(/\s+/);
+  return (w[w.length - 1] + " " + w.slice(0, -1).join(" ")).toLowerCase();
+}
+
 /** Every player once, sorted by last name then first name. */
 export function alphaRows(groups: PrintGroup[]): AlphaRow[] {
   const rows = groups.flatMap((g) =>
-    g.teams.flatMap((t) => t.players.map((p) => ({ name: lastFirst(p.name), hcp: p.hcp, start: g.start }))),
+    g.teams.flatMap((t) => t.players.map((p) => ({ key: sortKey(p.name), name: lastFirst(p.name), hcp: hcpText(p.hcp), start: g.start }))),
   );
-  return rows.sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
+  return rows.sort((a, b) => a.key.localeCompare(b.key)).map((r) => ({ name: r.name, hcp: r.hcp, start: r.start }));
+}
+
+export interface CartSet {
+  /** Numbered from 1 across the whole sheet. */
+  cart: number;
+  groupId: string;
+  start: string;
+  groupLabel: string;
+  /** Team names on this cart, in order, once each. */
+  teams: string[];
+  players: { name: string; team: string; hcp: string; tee: string; status: PrintTeam["status"] }[];
+}
+
+/** Carts hold two players. A cart never carries players from two groups; an odd group ends with a one-player cart. */
+export function cartSets(groups: PrintGroup[]): CartSet[] {
+  const out: CartSet[] = [];
+  for (const g of groups) {
+    const players = g.teams.flatMap((t) => t.players.map((p) => ({ name: p.name, team: t.label, hcp: hcpText(p.hcp), tee: p.tee, status: t.status })));
+    for (let i = 0; i < players.length; i += 2) {
+      const set = players.slice(i, i + 2);
+      out.push({ cart: out.length + 1, groupId: g.id, start: g.start, groupLabel: g.label, teams: [...new Set(set.map((p) => p.team))], players: set });
+    }
+  }
+  return out;
 }
 
 export interface StarterRow {
@@ -128,7 +162,7 @@ export interface StarterRow {
   team: string;
   tee: string;
   hcp: string;
-  /** Carts hold two players, numbered from 1 down the sheet. */
+  status: PrintTeam["status"];
   cart: number;
 }
 export interface StarterGroup {
@@ -138,22 +172,14 @@ export interface StarterGroup {
 }
 
 export function starterSheet(groups: PrintGroup[]): { groups: StarterGroup[]; players: number; carts: number } {
-  let cart = 0;
-  let seat = 0;
-  let players = 0;
-  const out = groups.map((g) => {
-    seat = 0; // a cart never carries players from two groups
-    const rows = g.teams.flatMap((t) =>
-      t.players.map((p) => {
-        if (seat % 2 === 0) cart++;
-        seat++;
-        players++;
-        return { name: p.name, team: t.label, tee: p.tee, hcp: p.hcp, cart };
-      }),
-    );
-    return { start: g.start, label: g.label, rows };
-  });
-  return { groups: out, players, carts: cart };
+  const sets = cartSets(groups);
+  const out: (StarterGroup & { id: string })[] = [];
+  for (const c of sets) {
+    let g = out[out.length - 1];
+    if (!g || g.id !== c.groupId) out.push((g = { id: c.groupId, start: c.start, label: c.groupLabel, rows: [] }));
+    for (const p of c.players) g.rows.push({ name: p.name, team: p.team, tee: p.tee, hcp: p.hcp, status: p.status, cart: c.cart });
+  }
+  return { groups: out, players: sets.reduce((n, c) => n + c.players.length, 0), carts: sets.length };
 }
 
 /** Strokes the team gets on each hole (0-17) for the round: dots on the printed card. */

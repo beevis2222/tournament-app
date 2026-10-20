@@ -53,6 +53,7 @@
 .pr-signs { display: block; }
 .pr-sign { height: 4.7in; margin: 0 0 0.3in; border: 2px solid #000; padding: 0.3in; text-align: center; break-inside: avoid; page-break-inside: avoid; overflow: hidden; }
 .pr-sign-start { font-size: 54pt; font-weight: 700; line-height: 1.1; }
+.pr-sign-cart { font-size: 28pt; font-weight: 700; }
 .pr-sign-ev { font-size: 14pt; margin-top: 4px; }
 .pr-sign-team { font-size: 24pt; font-weight: 700; margin: 0.15in 0 0.1in; }
 .pr-sign-name { font-size: 20pt; }
