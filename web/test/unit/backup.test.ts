@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { fromPrototypeScramble, scrambleRound, scrambleTeamHandicap } from "@starter/scoring";

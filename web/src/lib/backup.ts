@@ -7,6 +7,7 @@ export interface BackupResult {
 }
 
 // The prototype's JSON is loosely typed.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Any = any;
 
 const NOT_A_BACKUP = "That file isn't a backup from this app.";
