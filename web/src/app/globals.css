@@ -91,3 +91,10 @@ fieldset.group legend{font-family:var(--display);font-size:20px;padding:0 6px}
 .hole-input{width:44px;padding:6px 4px;text-align:center;font:inherit;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:6px}
 .hole-input.bad{border-color:var(--under);box-shadow:0 0 0 2px var(--under)}
 .save-failed{margin:10px 0;padding:10px 12px;border:1px solid var(--under);border-radius:6px;color:var(--under)}
+
+/* Leaderboard and finish */
+.badge-final{display:inline-block;font:600 13px var(--body);background:var(--ink);color:var(--paper);border-radius:999px;padding:2px 10px;vertical-align:middle;margin-left:8px}
+.boards{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:20px}
+table.list td.num,table.list th.num{text-align:right}
+.players{font-size:13px;color:var(--muted)}
+.prize{font-weight:600}
