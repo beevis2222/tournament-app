@@ -24,10 +24,12 @@ Every method starts from each player's course handicap for their tee: Index × (
 - If it's set, no team gets more strokes than that in a round. It's applied after rounding and works with every method above. Leave it empty for no limit.
 - Example: USGA works out to 8 with a max of 6, so the team plays off **6**.
 - Plus teams aren't affected.
+- **9-hole rounds: the max is halved**, rounded half up. A max of 6 means 3 strokes over 9 holes. (Confirmed by Justin, Oct 19 2026.)
 
 ## Prizes: shop gift cards
 - There's usually no cash purse. Each place on each board (gross and net, per flight) wins a shop gift card amount, e.g. 1st $150, 2nd $100, 3rd $50.
 - Ties split the combined amounts for the places they cover. Two teams tied for 1st each get ($150 + $100) ÷ 2 = $125, and the next team is 3rd and gets $50.
+- **Ties are split exactly, to the cent.** Three teams sharing $250 get $83.33 each. (Confirmed by Justin, Oct 19 2026.)
 
 ## Teams
 Either, chosen per event:
@@ -47,6 +49,4 @@ Either, chosen per event:
 ## Not decided yet (ask Justin before building)
 - Minimum drives per player. Does the club require them, and should the app track them?
 - Ties at a flight cutoff when splitting teams into flights.
-- Maximum team handicap on a 9-hole round: right now the same max applies (a max of 6 means 6 strokes even over 9 holes). Should it be halved?
-- Gift card ties: split evenly (current rule), or does the shop round to whole dollars?
 - When custom percentages are only set for 4-man teams, short teams fall back to USGA. Confirm that's what the club wants.
