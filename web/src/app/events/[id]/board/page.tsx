@@ -26,6 +26,7 @@ export default async function BoardPage({ params }: { params: Promise<{ id: stri
         <>
           <AutoRefresh seconds={15} />
           <Board flights={buildFlights(bundle)} />
+          {bundle.event.status !== "final" && <p className="muted">Prizes are provisional until the event is final.</p>}
           <p className="muted">Updates every 15 seconds.</p>
         </>
       ) : (

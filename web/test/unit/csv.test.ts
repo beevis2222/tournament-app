@@ -47,3 +47,22 @@ test("file name comes from the event name", () => {
   expect(csvFilename("Shop Scramble!")).toBe("shop-scramble-results.csv");
   expect(csvFilename("???")).toBe("event-results.csv");
 });
+
+test("cells that start like a formula are defused, real numbers are not", () => {
+  expect(csvCell("=SUM(A1)")).toBe("'=SUM(A1)");
+  expect(csvCell("@x")).toBe("'@x");
+  expect(csvCell("+cmd")).toBe("'+cmd");
+  expect(csvCell("-18")).toBe("-18");
+  expect(csvCell("+2")).toBe("+2");
+  expect(csvCell(-18)).toBe("-18");
+});
+
+test("the Teams section names the flight even when an earlier flight is empty", () => {
+  const b = bundle();
+  b.event.settings = EventSettings.parse({ flights: 2, flightNames: ["Low"] });
+  b.teams.forEach((t) => (t.flight = 1));
+  b.teams[1].flight = null;
+  const lines = eventCsv(b).split("\r\n");
+  expect(lines).toContain('"Smith, Jones",B Flight,Ann; Bob,5,');
+  expect(lines).toContain("Team B,No flight,Cy; Di,5,");
+});

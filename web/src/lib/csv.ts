@@ -1,11 +1,13 @@
 import { scrambleRound, scrambleTeamHandicap } from "@starter/scoring";
-import { buildFlights } from "./boards";
+import { buildFlights, flightLabel } from "./boards";
 import { toEngine } from "./toEngine";
 import type { EventBundle } from "./types";
 
 /** One CSV cell, quoted per RFC 4180 when it holds a comma, quote or line break. */
 export function csvCell(v: unknown): string {
-  const s = v === null || v === undefined ? "" : String(v);
+  let s = v === null || v === undefined ? "" : String(v);
+  // Stop spreadsheets running text that starts like a formula; real numbers ("-18", "+2") are left alone.
+  if (typeof v === "string" && /^[=+\-@\t\r]/.test(s) && !/^[+-]?\d+(\.\d+)?$/.test(s)) s = "'" + s;
   return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
@@ -17,8 +19,9 @@ export function eventCsv(b: EventBundle): string {
   const flights = buildFlights(b);
   const teamOf = new Map(b.teams.flatMap((t) => t.entryIds.map((id) => [id, t.label] as const)));
   const teeName = new Map(b.tees.map((t) => [t.id, t.name]));
+  const multi = b.event.settings.flights > 1 && flights.length > 0 && flights[0].name !== null;
   const flightName = (team: { flight?: number }) =>
-    flights.length > 1 || flights[0]?.name ? (flights[team.flight ?? 0]?.name ?? "") : "";
+    multi ? flightLabel(b.event.settings.flightNames, team.flight, b.event.settings.flights) : "";
   const rows: Row[] = [];
   const section = (title: string, header: Row, body: Row[]) => {
     if (rows.length) rows.push([]);

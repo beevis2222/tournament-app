@@ -1,5 +1,5 @@
 import { EventSettings, type EventBundle } from "@/lib/types";
-import { buildFlights, toParText } from "@/lib/boards";
+import { buildFlights, noFlightCount, noFlightWarning, toParText } from "@/lib/boards";
 
 const pars = [4, 4, 3, 5, 4, 4, 3, 5, 4, 4, 4, 3, 5, 4, 4, 3, 5, 4];
 const si = [7, 1, 15, 9, 3, 11, 17, 5, 13, 8, 2, 16, 10, 4, 12, 18, 6, 14];
@@ -37,4 +37,41 @@ test("flights get names and their own boards", () => {
   const flights = buildFlights(bundle(2));
   expect(flights.map((f) => f.name)).toEqual(["Low", "B Flight"]);
   expect(flights[1].boards[0].rows.map((r) => r.team)).toEqual(["T2"]);
+});
+
+const team = (b: EventBundle, id: string) => b.teams.find((t) => t.id === id)!;
+const netPrizes = (b: EventBundle) => buildFlights(b).flatMap((f) => f.boards.find((x) => x.kind === "net")!.rows.map((r) => [f.name, r.team, r.prize]));
+
+test("teams with no flight or an out-of-range flight go in a last group with no prizes", () => {
+  const b = bundle(2);
+  team(b, "tm3").flight = null;
+  team(b, "tm1").flight = 5;
+  const flights = buildFlights(b);
+  expect(flights.map((f) => f.name)).toEqual(["B Flight", "No flight"]);
+  expect(flights[1].noFlight).toBe(true);
+  expect(flights[1].boards[0].rows.map((r) => r.team).sort()).toEqual(["T1", "T3"]);
+  expect(flights[1].boards.flatMap((x) => x.rows.map((r) => r.prize))).toEqual([null, null, null, null]);
+  expect(flights[0].boards[0].rows[0].prize).toBe(150);
+  expect(noFlightCount(flights)).toBe(2);
+  expect(noFlightWarning(2)).toBe("2 teams have no flight, so they can't win prizes. Set flights on the Teams page.");
+});
+
+test("a withdrawn team wins nothing", () => {
+  const b = bundle();
+  team(b, "tm3").status = "WD";
+  expect(netPrizes(b).find((r) => r[1] === "T3")![2]).toBeNull();
+});
+
+test("a three-way tie for first splits 150/100/50 into $100 each", () => {
+  const b = bundle();
+  b.scores.filter((s) => s.teamId === "tm3").forEach((s) => (s.gross = 4));
+  expect(netPrizes(b).map((r) => r[2])).toEqual([100, 100, 100]);
+});
+
+test("with handicaps off there is no net board and the Net column is blank", () => {
+  const b = bundle();
+  b.event.settings = EventSettings.parse({ teamHandicap: { method: "none" } });
+  const [flight] = buildFlights(b);
+  expect(flight.boards.map((x) => x.kind)).toEqual(["gross"]);
+  expect(flight.boards[0].rows.every((r) => r.net === null)).toBe(true);
 });

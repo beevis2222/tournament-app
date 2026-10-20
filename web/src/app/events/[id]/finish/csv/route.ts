@@ -25,7 +25,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (!hasCourse(bundle)) return text("Choose a course first.", 400);
 
   // The leading byte order mark lets Excel read it as UTF-8.
-  return new Response("﻿" + eventCsv(bundle), {
+  return new Response("\ufeff" + eventCsv(bundle), {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
       "Content-Disposition": `attachment; filename="${csvFilename(bundle.event.name)}"`,

@@ -23,7 +23,7 @@ export default async function FinishPage({ params }: { params: Promise<{ id: str
       {hasCourse(bundle) ? (
         <>
           <h3>Prize winners</h3>
-          <Winners flights={buildFlights(bundle)} />
+          <Winners flights={buildFlights(bundle)} final={bundle.event.status === "final"} />
           <FinishView eventId={id} status={bundle.event.status} csvName={csvFilename(bundle.event.name)} />
         </>
       ) : (

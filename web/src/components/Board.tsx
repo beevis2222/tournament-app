@@ -1,5 +1,10 @@
 import { formatMoney } from "@/lib/money";
-import type { BoardView, FlightView } from "@/lib/boards";
+import { noFlightCount, noFlightWarning, type BoardView, type FlightView } from "@/lib/boards";
+
+function NoFlightWarning({ flights }: { flights: FlightView[] }) {
+  const n = noFlightCount(flights);
+  return n > 0 ? <p className="error" role="alert">{noFlightWarning(n)}</p> : null;
+}
 
 function title(kind: BoardView["kind"]) {
   return kind === "gross" ? "Gross" : "Net";
@@ -42,11 +47,13 @@ function BoardTable({ board }: { board: BoardView }) {
 
 /** Gross and net boards side by side, one block per flight (no heading when the whole field is one board). */
 export function Board({ flights }: { flights: FlightView[] }) {
-  if (flights.every((f) => f.boards.every((b) => b.rows.length === 0))) {
+  const teamCount = flights.reduce((n, f) => n + (f.boards[0]?.rows.length ?? 0), 0);
+  if (teamCount === 0) {
     return <p className="muted">No teams yet. Make teams first.</p>;
   }
   return (
     <>
+      <NoFlightWarning flights={flights} />
       {flights.map((f) => (
         <section key={f.name ?? "all"} style={{ marginBottom: 28 }}>
           {f.name && <h2 style={{ marginBottom: 8 }}>{f.name}</h2>}
@@ -62,9 +69,11 @@ export function Board({ flights }: { flights: FlightView[] }) {
 }
 
 /** Prize winners for each flight and board. A team that wins on both boards is listed on both. */
-export function Winners({ flights }: { flights: FlightView[] }) {
+export function Winners({ flights, final }: { flights: FlightView[]; final: boolean }) {
   return (
     <>
+      <NoFlightWarning flights={flights} />
+      {!final && <p className="muted">Prizes are provisional until the event is final.</p>}
       {flights.map((f) => (
         <section key={f.name ?? "all"} style={{ marginBottom: 20 }}>
           {f.name && <h3 style={{ marginBottom: 6 }}>{f.name}</h3>}
