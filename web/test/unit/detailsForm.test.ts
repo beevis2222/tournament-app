@@ -16,8 +16,12 @@ describe("parseDetails", () => {
     expect(r).toMatchObject({ ok: true, name: "Spring Scramble" });
     if (r.ok) expect(r.settings).toEqual(EventSettings.parse({}));
   });
-  it("shows the Zod message next to the field", () => {
-    expect(errorsOf({ ...base(), rounds: "9" }).rounds).toMatch(/less than or equal to 4/);
+  it("shows a plain message next to the field, never the raw Zod wording", () => {
+    expect(errorsOf({ ...base(), rounds: "9" }).rounds).toBe("Rounds must be 1 to 4.");
+    expect(errorsOf({ ...base(), interval: "50" }).interval).toBe("Minutes between tee times must be 5 to 20.");
+    expect(errorsOf({ ...base(), flights: "9" }).flights).toBe("Flights must be 1 to 6.");
+    expect(errorsOf({ ...base(), hcMethod: "combined", combinedPercent: "150" }).teamHandicap).toBe("Percentages must be 0 to 100.");
+    expect(errorsOf({ ...base(), maxTeamHandicap: "-2" }).maxTeamHandicap).toBe("Max team handicap must be 0 or more.");
   });
   it("flags blank numbers and a missing name", () => {
     const e = errorsOf({ ...base(), name: " ", interval: "" });

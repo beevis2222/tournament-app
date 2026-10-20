@@ -176,7 +176,6 @@ export async function moveTeam(teamId: string, toGroupId: string): Promise<{ ok:
   return { ok: true };
 }
 
-
 /** Changes a group's start: a hole label ("1", "10A") for shotgun events, "HH:MM" (24 hour) for tee times. */
 export async function setStart(groupId: string, start: string): Promise<{ ok: true } | Fail> {
   if (!(await currentStaff())) return { ok: false, error: SIGNED_OUT };

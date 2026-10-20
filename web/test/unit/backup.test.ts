@@ -78,3 +78,17 @@ test("start settings, flights, statuses, prizes and groups come across", () => {
   expect(g(r2.id)).toEqual([[null, "08:00"], [null, "13:30"]]);
   expect(b.scores.map((s) => [s.hole, s.gross])).toEqual([[1, 4], [5, 5]]);
 });
+
+test("a team status that is not WD, DQ or NS is treated as playing instead of failing the event", () => {
+  const pars = Array(18).fill(4);
+  const ev = {
+    id: "s",
+    event: { name: "Odd status", format: "scramble", scoring: "net", rounds: 1, teamSize: 2, holesMode: "18", rmode: {}, pars, si: pars.map((_: number, i: number) => i + 1), tees: [] },
+    players: [1, 2].map((n) => ({ id: `p${n}`, name: `P${n}`, index: 10 })),
+    pairings: { teams: [{ id: "t0", players: ["p1", "p2"], label: "A" }], status: { t0: "withdrawn" }, rounds: [[]] },
+    cards: [{}],
+  };
+  const r = readBackup(wrap([ev]));
+  expect(r.skipped).toEqual([]);
+  expect(r.bundles[0].teams.map((t) => t.status)).toEqual([null]);
+});

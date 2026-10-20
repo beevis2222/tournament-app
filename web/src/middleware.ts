@@ -33,12 +33,15 @@ export async function middleware(request: NextRequest) {
 
   if (!data.user) return isPublic ? response : redirect("/sign-in");
 
-  const { data: staff } = await supabase
+  const { data: staff, error: staffError } = await supabase
     .from("staff")
     .select("id")
     .eq("user_id", data.user.id)
     .is("removed_at", null)
     .maybeSingle();
+
+  // A failed lookup says nothing about the person: let the request through, and the page shows its own plain error.
+  if (staffError) return response;
 
   if (!staff) {
     // Signed in but not on staff: the only place to go is first-time setup.

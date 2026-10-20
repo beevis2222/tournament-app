@@ -22,6 +22,7 @@ export function eventCsv(b: EventBundle): string {
   const multi = b.event.settings.flights > 1 && flights.length > 0 && flights[0].name !== null;
   const flightName = (team: { flight?: number }) =>
     multi ? flightLabel(b.event.settings.flightNames, team.flight, b.event.settings.flights) : "";
+  const playingTeams = ev.teams.filter((t) => t.playerIds.length > 0);
   const rows: Row[] = [];
   const section = (title: string, header: Row, body: Row[]) => {
     if (rows.length) rows.push([]);
@@ -31,17 +32,17 @@ export function eventCsv(b: EventBundle): string {
   section(
     "Field",
     ["Name", "Handicap index", "Tee", "Team", "Alternate"],
-    b.entries.map((e) => [e.name, e.nh ? "NH" : e.indexUsed, e.teeId ? (teeName.get(e.teeId) ?? "") : "", teamOf.get(e.id) ?? "", e.alternate ? "Yes" : ""]),
+    b.entries.map((e) => [e.name, e.nh ? "NH" : e.indexUsed, e.teeId ? (teeName.get(e.teeId) ?? "") : "", e.alternate ? "" : (teamOf.get(e.id) ?? ""), e.alternate ? "Yes" : ""]),
   );
 
   section(
     "Teams",
     ["Team", "Flight", "Players", "Team handicap", "Status"],
-    ev.teams.map((t) => [t.name, flightName(t), t.playerIds.map((id) => ev.players.find((p) => p.id === id)?.name ?? "").join("; "), scrambleTeamHandicap(ev, t), t.status ?? ""]),
+    playingTeams.map((t) => [t.name, flightName(t), t.playerIds.map((id) => ev.players.find((p) => p.id === id)?.name ?? "").join("; "), scrambleTeamHandicap(ev, t), t.status ?? ""]),
   );
 
   const scoreRows: Row[] = [];
-  ev.teams.forEach((t) =>
+  playingTeams.forEach((t) =>
     ev.rounds.forEach((_, r) => {
       const card = ev.scores[r]?.[t.id] ?? [];
       if (card.every((g) => g === null || g === undefined)) return;

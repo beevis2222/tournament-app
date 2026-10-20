@@ -56,9 +56,12 @@ export function preEventCheck(b: EventBundle): Problem[] {
 
   for (const e of b.entries) if (e.nh) out.push({ level: "warning", text: `${e.name} has no handicap index.` });
 
+  // A team with nobody playing counts as not there (like on the board and the cards).
   const entryById = new Map(b.entries.map((e) => [e.id, e]));
-  for (const t of b.teams) {
-    const n = t.entryIds.filter((id) => !entryById.get(id)?.alternate).length;
+  const playingCount = (t: EventBundle["teams"][number]) => t.entryIds.filter((id) => entryById.has(id) && !entryById.get(id)!.alternate).length;
+  const teams = b.teams.filter((t) => playingCount(t) > 0);
+  for (const t of teams) {
+    const n = playingCount(t);
     if (n < teamSize) out.push({ level: "warning", text: `${t.label} has only ${n} players.` });
   }
 
@@ -75,7 +78,7 @@ export function preEventCheck(b: EventBundle): Problem[] {
       if (seen.has(label)) dup.add(label);
       seen.add(label);
     }
-    for (const t of b.teams) {
+    for (const t of teams) {
       if (!started.has(t.id)) out.push({ level: "error", text: `${t.label} has no starting hole or time.` });
     }
     for (const label of dup) out.push({ level: "error", text: `Two groups start at ${label} in round ${r.number}.` });

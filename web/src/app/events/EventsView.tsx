@@ -35,7 +35,17 @@ function EventList({ rows, onDelete, busy }: { rows: EventRow[]; onDelete: (e: E
   );
 }
 
-export default function EventsView({ events, deleted }: { events: EventRow[]; deleted: EventRow[] }) {
+export default function EventsView({
+  events,
+  deleted,
+  hasMoreDeleted,
+  showingAllDeleted,
+}: {
+  events: EventRow[];
+  deleted: EventRow[];
+  hasMoreDeleted: boolean;
+  showingAllDeleted: boolean;
+}) {
   // Split by the browser's local date so an evening event is not "past" (the server runs in UTC).
   const today = localDate();
   const upcoming = events.filter((e) => e.date >= today).sort((a, b) => a.date.localeCompare(b.date));
@@ -110,6 +120,8 @@ export default function EventsView({ events, deleted }: { events: EventRow[]; de
               <button className="btn-quiet" type="button" disabled={pending} onClick={() => put(e)}>Restore</button>
             </div>
           ))}
+          {hasMoreDeleted && <p><Link href="/events?all=1">Show all</Link></p>}
+          {showingAllDeleted && <p><Link href="/events">Show recent only</Link></p>}
         </>
       )}
 

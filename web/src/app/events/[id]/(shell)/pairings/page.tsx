@@ -31,6 +31,8 @@ export default async function PairingsPage({ params }: { params: Promise<{ id: s
   };
 
   const { settings } = bundle.event;
+  // Teams with nobody playing (everyone an alternate) are not part of the pairings.
+  const playingTeams = bundle.teams.filter((t) => t.entryIds.some((eid) => !alternates.has(eid)));
   const rounds: RoundRow[] = bundle.rounds.map((r) => {
     const groups: GroupRow[] = bundle.groups
       .filter((g) => g.roundId === r.id)
@@ -48,11 +50,11 @@ export default async function PairingsPage({ params }: { params: Promise<{ id: s
         teams: g.teamIds.map(chip).filter((c): c is TeamChip => c !== null),
       }));
     const placed = new Set(groups.flatMap((g) => g.teams.map((t) => t.id)));
-    const unplaced = bundle.teams.filter((t) => !placed.has(t.id)).map((t) => chip(t.id)!);
+    const unplaced = playingTeams.filter((t) => !placed.has(t.id)).map((t) => chip(t.id)!);
     return { number: r.number, groups, unplaced };
   });
 
-  const total = bundle.teams.length;
+  const total = playingTeams.length;
   const preview = Array.from({ length: Math.min(total, 3) }, (_, i) => startLabel(i, total, settings));
 
   // With no course chosen the placeholder pars would pass the check, so show it as missing.

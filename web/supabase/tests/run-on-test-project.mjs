@@ -12,10 +12,12 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const TEST_REF = "adotnhqartwywzkhfbkt";
-const PRODUCTION_REF = "sowukjehokbhjkjlzqio";
-const ref = process.argv[2] ?? TEST_REF;
 const here = dirname(fileURLToPath(import.meta.url));
+// The two project refs live in one place, shared with the end-to-end test.
+const refs = JSON.parse(readFileSync(join(here, "..", "..", "e2e", "refs.json"), "utf8"));
+const TEST_REF = refs.testRef;
+const PRODUCTION_REF = refs.productionRef;
+const ref = process.argv[2] ?? TEST_REF;
 const webDir = join(here, "..", "..");
 const linkedRefFile = join(webDir, "supabase", ".temp", "project-ref");
 const linkedRef = existsSync(linkedRefFile) ? readFileSync(linkedRefFile, "utf8").trim() : "";
@@ -41,7 +43,7 @@ const dir = mkdtempSync(join(tmpdir(), "starter-pgtap-"));
 const file = join(dir, "wrapped.test.sql");
 writeFileSync(file, sql);
 
-const run = spawnSync(`npx supabase@latest db query --linked --project-ref ${ref} -f "${file}"`, {
+const run = spawnSync(`npx supabase db query --linked --project-ref ${ref} -f "${file}"`, {
   cwd: webDir,
   shell: true,
   encoding: "utf8",

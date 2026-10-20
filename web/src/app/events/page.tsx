@@ -12,7 +12,10 @@ function LoadError() {
   );
 }
 
-export default async function EventsPage() {
+const RECENT = 20;
+
+export default async function EventsPage({ searchParams }: { searchParams: Promise<{ all?: string }> }) {
+  const showAll = (await searchParams).all === "1";
   const supabase = await createServerSupabase();
   const [live, removed] = await Promise.all([
     supabase.from("events").select("id, name, date, status").is("deleted_at", null),
@@ -21,11 +24,13 @@ export default async function EventsPage() {
       .select("id, name, date, status")
       .not("deleted_at", "is", null)
       .order("deleted_at", { ascending: false })
-      .limit(20),
+      .limit(showAll ? 2000 : RECENT + 1),
   ]);
   if (live.error || removed.error) return <LoadError />;
 
   const rows = (live.data ?? []) as EventRow[];
+  const removedRows = (removed.data ?? []) as EventRow[];
+  const hasMore = !showAll && removedRows.length > RECENT;
 
   return (
     <div className="wrap">
@@ -35,7 +40,7 @@ export default async function EventsPage() {
           <Link className="evbtn" href="/settings">Settings</Link>
         </div>
       </header>
-      <EventsView events={rows} deleted={(removed.data ?? []) as EventRow[]} />
+      <EventsView events={rows} deleted={showAll ? removedRows : removedRows.slice(0, RECENT)} hasMoreDeleted={hasMore} showingAllDeleted={showAll} />
     </div>
   );
 }

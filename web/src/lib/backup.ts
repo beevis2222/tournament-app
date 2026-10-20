@@ -118,7 +118,8 @@ function importScramble(ev: Any): EventBundle {
       id,
       label: t.label ?? t.id,
       flight: typeof t.flight === "number" ? t.flight : null,
-      status: statuses[t.id] ?? null,
+      // Only WD, DQ and NS are real statuses; anything else in an old backup means "playing".
+      status: ["WD", "DQ", "NS"].includes(statuses[t.id]) ? (statuses[t.id] as "WD" | "DQ" | "NS") : null,
       sort,
       entryIds: (t.players ?? []).map((pid: string) => entryIds.get(pid)).filter(defined),
     };

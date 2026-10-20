@@ -63,6 +63,33 @@ function fieldFor(path: (string | number)[]): string {
   return String(head);
 }
 
+/** A plain sentence for a settings problem, whatever zod's own wording is. */
+function plainMessage(path: (string | number)[], code: string): string {
+  const head = String(path[0]);
+  switch (head) {
+    case "rounds":
+      return "Rounds must be 1 to 4.";
+    case "interval":
+      return "Minutes between tee times must be 5 to 20.";
+    case "flights":
+      return "Flights must be 1 to 6.";
+    case "maxTeamHandicap":
+      return "Max team handicap must be 0 or more.";
+    case "teamHandicap":
+      return code === "invalid_union" || code === "invalid_literal" || code === "invalid_enum_value" ? "Pick a handicap method." : "Percentages must be 0 to 100.";
+    case "prizes":
+      return "Prizes must be 0 or more.";
+    case "startTime":
+      return "Pick a start time.";
+    case "teamSize":
+      return "Team size must be 2, 3 or 4.";
+    case "limits":
+      return path[1] === "gapMode" ? "Pick one of the choices." : "Enter a number or leave it blank.";
+    default:
+      return "Pick one of the choices.";
+  }
+}
+
 export function parseDetails(v: DetailsValues): DetailsResult {
   const errors: Record<string, string> = {};
   const name = v.name.trim();
@@ -116,7 +143,7 @@ export function parseDetails(v: DetailsValues): DetailsResult {
   const parsed = EventSettings.safeParse(candidate);
   if (!parsed.success) {
     for (const issue of parsed.error.issues) {
-      errors[fieldFor(issue.path)] ??= issue.message;
+      errors[fieldFor(issue.path)] ??= plainMessage(issue.path, issue.code);
     }
   }
   if (!parsed.success || Object.keys(errors).length) return { ok: false, errors };

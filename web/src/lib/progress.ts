@@ -1,16 +1,22 @@
+import { holesInPlay } from "@starter/scoring";
 import { fmtTime } from "@/lib/pairings";
 import type { EventBundle } from "@/lib/types";
 
 export type Step = { key: string; label: string; href: string; done: boolean };
 
 function scoresAllIn(b: EventBundle): boolean {
-  const perRound = b.event.settings.holes === "18" ? 18 : 9;
-  const playing = b.teams.filter((t) => !t.status);
+  const alt = new Map(b.entries.map((e) => [e.id, e.alternate]));
+  const playing = b.teams.filter((t) => !t.status && t.entryIds.some((id) => alt.get(id) === false));
   const live = b.rounds.filter((r) => r.mode !== "called_off");
   if (!playing.length || !live.length) return false;
-  return live.every((r) =>
-    playing.every((t) => b.scores.filter((s) => s.roundId === r.id && s.teamId === t.id && s.gross !== null).length >= perRound),
-  );
+  // Each round counts its own holes (a shortened round needs only its nine); called-off rounds do not count.
+  return live.every((r) => {
+    const holes = holesInPlay(b.event.settings.holes, r.mode);
+    return playing.every((t) => {
+      const have = new Set(b.scores.filter((s) => s.roundId === r.id && s.teamId === t.id && s.gross !== null).map((s) => s.hole));
+      return holes.every((h) => have.has(h + 1));
+    });
+  });
 }
 
 /** The progress bar: Details, Field, Teams, Pairings, Scores, Finish. */
