@@ -4,8 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import ParSiGrid from "@/components/ParSiGrid";
 import { validateCourse, type Errors } from "@/lib/courseValidation";
-import { Toast } from "@/components/Toast";
-import { chooseCourse, saveCourse, undoCourse, type CourseUndo } from "./actions";
+import { chooseCourse, saveCourse, type CourseUndo } from "./actions";
 import TeeEditor, { type TeeRow } from "./TeeEditor";
 
 export type CourseRow = { id: string; name: string; pars: number[]; si: number[] };
@@ -18,6 +17,7 @@ export default function CourseEditor({
   current,
   tees,
   needsConfirm,
+  onUndoOffer,
 }: {
   eventId: string;
   courses: { id: string; name: string }[];
@@ -25,6 +25,8 @@ export default function CourseEditor({
   tees: TeeRow[];
   /** Tees are assigned to players or scores exist: changing the course affects them. */
   needsConfirm: boolean;
+  /** Called after a course change so the screen can offer Undo (the screen outlives this editor, which restarts on a new course). */
+  onUndoOffer: (data: CourseUndo) => void;
 }) {
   const router = useRouter();
   const [creating, setCreating] = useState(false);
@@ -35,7 +37,6 @@ export default function CourseEditor({
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
   const [pending, startTransition] = useTransition();
   const [confirm, setConfirm] = useState<(() => void) | null>(null);
-  const [undo, setUndo] = useState<{ message: string; data: CourseUndo } | null>(null);
 
   const showForm = creating || current !== null;
 
@@ -56,23 +57,12 @@ export default function CourseEditor({
         if (!result.ok) setMessage({ kind: "error", text: result.error ?? "Couldn't change the course." });
         else {
           if (result.notice) setMessage({ kind: "ok", text: result.notice });
-          if (result.undo) setUndo({ message: "Course changed.", data: result.undo });
+          if (result.undo) onUndoOffer(result.undo);
         }
         router.refresh();
       });
     if (current && needsConfirm && value !== current.id) setConfirm(() => go);
     else go();
-  }
-
-  function runUndo() {
-    const u = undo;
-    setUndo(null);
-    if (!u) return;
-    startTransition(async () => {
-      const result = await undoCourse(eventId, u.data);
-      setMessage(result.ok ? { kind: "ok", text: "Course change undone." } : { kind: "error", text: result.error ?? "Couldn't undo." });
-      router.refresh();
-    });
   }
 
   function save(e: React.FormEvent) {
@@ -92,7 +82,7 @@ export default function CourseEditor({
         if (result.ok) {
           setCreating(false);
           setMessage({ kind: "ok", text: "Course saved." });
-          if (result.undo) setUndo({ message: "Course changed.", data: result.undo });
+          if (result.undo) onUndoOffer(result.undo);
           router.refresh();
         } else {
           setErrors(result.errors ?? {});
@@ -168,7 +158,6 @@ export default function CourseEditor({
           <p className="muted">Tees can be changed but not removed.</p>
         </>
       )}
-      {undo && <Toast message={undo.message} onUndo={runUndo} onDone={() => setUndo(null)} />}
     </>
   );
 }

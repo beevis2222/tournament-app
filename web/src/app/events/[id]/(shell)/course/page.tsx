@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { EVENT_NOT_FOUND, loadEvent } from "@/lib/db/events";
 import { createServerSupabase } from "@/lib/supabase/server";
-import CourseEditor from "./CourseEditor";
+import CourseScreen from "./CourseScreen";
 
 export default async function CoursePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -24,7 +24,7 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
   return (
     <>
       <h2 style={{ marginTop: 0 }}>Course &amp; tees</h2>
-      <CourseEditor key={course.id || "none"} eventId={id} courses={courses ?? []} current={current} tees={tees} needsConfirm={needsConfirm} />
+      <CourseScreen eventId={id} courses={courses ?? []} current={current} tees={tees} needsConfirm={needsConfirm} />
     </>
   );
 }
