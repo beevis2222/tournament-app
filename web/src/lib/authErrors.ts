@@ -10,3 +10,8 @@ export function friendlyAuthError(message: string): string {
   }
   return "Something went wrong signing in. Try again.";
 }
+
+// With "Confirm email" on, sign-up succeeds but returns no session until the link is clicked.
+export function signUpOutcome(data: { session: unknown | null }): "signed-in" | "check-email" {
+  return data.session ? "signed-in" : "check-email";
+}

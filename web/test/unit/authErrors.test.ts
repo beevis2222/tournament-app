@@ -1,4 +1,4 @@
-import { friendlyAuthError } from "@/lib/authErrors";
+import { friendlyAuthError, signUpOutcome } from "@/lib/authErrors";
 
 describe("friendlyAuthError", () => {
   it("explains a refused sign-up", () => {
@@ -14,5 +14,14 @@ describe("friendlyAuthError", () => {
   });
   it("falls back for anything else", () => {
     expect(friendlyAuthError("boom")).toBe("Something went wrong signing in. Try again.");
+  });
+});
+
+describe("signUpOutcome", () => {
+  it("signs in when a session came back", () => {
+    expect(signUpOutcome({ session: {} })).toBe("signed-in");
+  });
+  it("asks for email confirmation when there is no session", () => {
+    expect(signUpOutcome({ session: null })).toBe("check-email");
   });
 });

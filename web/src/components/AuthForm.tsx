@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { friendlyAuthError } from "@/lib/authErrors";
+import { friendlyAuthError, signUpOutcome } from "@/lib/authErrors";
 import { createBrowserSupabase } from "@/lib/supabase/client";
 
 export default function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
   const router = useRouter();
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState("");
   const signingIn = mode === "sign-in";
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -22,11 +23,17 @@ export default function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
     setBusy(true);
     setError("");
     const auth = createBrowserSupabase().auth;
-    const { error: authError } = signingIn
+    setNotice("");
+    const { data, error: authError } = signingIn
       ? await auth.signInWithPassword(credentials)
       : await auth.signUp(credentials);
     if (authError) {
       setError(friendlyAuthError(authError.message));
+      setBusy(false);
+      return;
+    }
+    if (!signingIn && signUpOutcome(data) === "check-email") {
+      setNotice("Check your email for a link to finish signing up, then sign in.");
       setBusy(false);
       return;
     }
@@ -52,6 +59,7 @@ export default function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
             autoComplete={signingIn ? "current-password" : "new-password"}
           />
         </label>
+        {notice && <p className="note" role="status">{notice}</p>}
         {error && <p className="error" role="alert">{error}</p>}
         <button className="btn" type="submit" disabled={busy}>
           {signingIn ? "Sign in" : "Create password"}
