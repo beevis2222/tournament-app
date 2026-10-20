@@ -32,7 +32,7 @@ export default async function EventsPage() {
       <header className="shell-head">
         <div className="hdrow">
           <h1>Events</h1>
-          <Link className="evbtn" href="/settings/staff">Staff</Link>
+          <Link className="evbtn" href="/settings">Settings</Link>
         </div>
       </header>
       <EventsView events={rows} deleted={(removed.data ?? []) as EventRow[]} />
