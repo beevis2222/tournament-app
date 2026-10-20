@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { Board } from "@/components/Board";
-import { buildFlights } from "@/lib/boards";
+import { buildFlights, unsplitFlights, unsplitWarning } from "@/lib/boards";
 import { EVENT_NOT_FOUND, loadEvent } from "@/lib/db/events";
 import { hasCourse } from "@/lib/toEngine";
 
@@ -25,6 +25,7 @@ export default async function BoardPage({ params }: { params: Promise<{ id: stri
       {hasCourse(bundle) ? (
         <>
           <AutoRefresh seconds={15} />
+          {unsplitFlights(bundle) > 0 && <p className="note">{unsplitWarning(unsplitFlights(bundle))}</p>}
           <Board flights={buildFlights(bundle)} />
           {bundle.event.status !== "final" && <p className="muted">Prizes are provisional until the event is final.</p>}
           <p className="muted">Updates every 15 seconds.</p>

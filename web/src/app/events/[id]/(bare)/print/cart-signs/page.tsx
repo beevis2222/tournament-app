@@ -1,5 +1,6 @@
+import NoStartNote from "@/components/NoStartNote";
 import PrintBar from "@/components/PrintBar";
-import { cartSets, printGroups } from "@/lib/printData";
+import { cartSets, hcpText, printGroups } from "@/lib/printData";
 import { loadForPrint, type PrintParams, type PrintSearch } from "../load";
 
 export default async function CartSignsPrint({ params, searchParams }: { params: PrintParams; searchParams: PrintSearch }) {
@@ -9,6 +10,7 @@ export default async function CartSignsPrint({ params, searchParams }: { params:
   return (
     <main className="pr-page">
       <PrintBar backHref={back} />
+      {round && <NoStartNote bundle={bundle} roundId={round.id} className="pr-note" />}
       {signs.length === 0 ? (
         <p>No groups yet. Make the pairings first.</p>
       ) : (
@@ -22,7 +24,7 @@ export default async function CartSignsPrint({ params, searchParams }: { params:
               {s.players.map((p, i) => (
                 <div key={i} className="pr-sign-name">
                   {p.name}
-                  {p.hcp ? <span> ({p.hcp})</span> : null}
+                  {hcpText(p.hcp) ? <span> ({hcpText(p.hcp)})</span> : null}
                 </div>
               ))}
             </div>

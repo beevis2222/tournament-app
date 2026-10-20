@@ -1,3 +1,4 @@
+import NoStartNote from "@/components/NoStartNote";
 import PrintBar from "@/components/PrintBar";
 import PrintHeader from "@/components/PrintHeader";
 import { alphaRows, printGroups } from "@/lib/printData";
@@ -11,6 +12,7 @@ export default async function AlphaPrint({ params, searchParams }: { params: Pri
   return (
     <main className="pr-page">
       <PrintBar backHref={back} />
+      {round && <NoStartNote bundle={bundle} roundId={round.id} className="pr-note" />}
       <PrintHeader name={bundle.event.name} date={bundle.event.date} title={title} />
       {rows.length === 0 ? (
         <p>No groups yet. Make the pairings first.</p>

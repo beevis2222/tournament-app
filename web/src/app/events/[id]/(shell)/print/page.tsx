@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { EVENT_NOT_FOUND, loadEvent } from "@/lib/db/events";
+import NoStartNote from "@/components/NoStartNote";
 import { pickRound } from "@/lib/printData";
 
 const SHEETS = [
@@ -49,6 +50,7 @@ export default async function PrintMenu({
           ))}
         </p>
       )}
+      {current && <NoStartNote bundle={bundle} roundId={current.id} />}
       <ul className="print-menu" style={{ listStyle: "none", padding: 0 }}>
         {SHEETS.map((s) => (
           <li key={s.slug} style={{ margin: "0 0 12px" }}>

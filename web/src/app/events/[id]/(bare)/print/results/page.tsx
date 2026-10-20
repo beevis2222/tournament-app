@@ -1,7 +1,7 @@
 import Link from "next/link";
 import PrintBar from "@/components/PrintBar";
 import PrintHeader from "@/components/PrintHeader";
-import { buildFlights } from "@/lib/boards";
+import { buildFlights, unsplitFlights, unsplitWarning } from "@/lib/boards";
 import { formatMoney } from "@/lib/money";
 import { hasCourse } from "@/lib/toEngine";
 import { loadForPrint, type PrintParams, type PrintSearch } from "../load";
@@ -28,6 +28,7 @@ export default async function ResultsPrint({ params, searchParams }: { params: P
     <main className="pr-page">
       <PrintBar backHref={back} />
       <PrintHeader name={bundle.event.name} date={bundle.event.date} title={title} />
+      {unsplitFlights(bundle) > 0 && <p className="pr-note">{unsplitWarning(unsplitFlights(bundle))}</p>}
       {flights.map((f, fi) =>
         f.boards.map((b) => (
           <section key={`${fi}-${b.kind}`} className="pr-keep">

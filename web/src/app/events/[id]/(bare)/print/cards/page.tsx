@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { holesInPlay } from "@starter/scoring";
+import NoStartNote from "@/components/NoStartNote";
 import PrintBar from "@/components/PrintBar";
 import { printGroups, strokesForTeam } from "@/lib/printData";
 import { hasCourse, toEngine } from "@/lib/toEngine";
@@ -15,6 +16,7 @@ export default async function CardsPrint({ params, searchParams }: { params: Pri
     return (
       <main className="pr-page">
         <PrintBar backHref={back} />
+        {round && <NoStartNote bundle={bundle} roundId={round.id} className="pr-note" />}
         <p>
           <Link href={`/events/${id}/course`}>Choose a course first</Link> so the scorecards have pars and handicaps.
         </p>
@@ -33,6 +35,7 @@ export default async function CardsPrint({ params, searchParams }: { params: Pri
     return (
       <main className="pr-page">
         <PrintBar backHref={back} />
+        {round && <NoStartNote bundle={bundle} roundId={round.id} className="pr-note" />}
         <p>{cards.length === 0 ? "No groups yet. Make the pairings first." : "This round is called off, so there are no holes to score."}</p>
       </main>
     );
@@ -47,6 +50,7 @@ export default async function CardsPrint({ params, searchParams }: { params: Pri
   return (
     <main className="pr-page">
       <PrintBar backHref={back} />
+      {round && <NoStartNote bundle={bundle} roundId={round.id} className="pr-note" />}
       <div className="pr-cards">
         {cards.map((c) => (
           <div key={`${c.start}-${c.team.id}`} className="pr-card">

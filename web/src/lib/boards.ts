@@ -56,6 +56,22 @@ export function noFlightWarning(n: number): string {
   return `${n} ${n === 1 ? "team has" : "teams have"} no flight, so ${n === 1 ? "it can't" : "they can't"} win prizes. Set flights on the Teams page.`;
 }
 
+/**
+ * The event's flight count when it asks for several flights but no playing team has been given one
+ * (so everyone is ranked as one field); 0 when there is nothing to warn about.
+ */
+export function unsplitFlights(bundle: EventBundle): number {
+  const { flights } = bundle.event.settings;
+  if (flights <= 1) return 0;
+  const alt = new Map(bundle.entries.map((e) => [e.id, e.alternate]));
+  const playing = bundle.teams.filter((t) => t.entryIds.some((id) => alt.get(id) === false));
+  return playing.length > 0 && playing.every((t) => t.flight === null) ? flights : 0;
+}
+
+export function unsplitWarning(flights: number): string {
+  return `This event has ${flights} flights but teams haven't been split. Split them on the Teams page.`;
+}
+
 /** Flights (or one whole-field group) with their gross and net boards, prizes included. Standings and money come from the engine. */
 export function buildFlights(bundle: EventBundle): FlightView[] {
   const ev = toEngine(bundle);

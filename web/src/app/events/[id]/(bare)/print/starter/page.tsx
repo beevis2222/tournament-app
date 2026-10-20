@@ -1,3 +1,4 @@
+import NoStartNote from "@/components/NoStartNote";
 import PrintBar from "@/components/PrintBar";
 import PrintHeader from "@/components/PrintHeader";
 import { printGroups, starterSheet } from "@/lib/printData";
@@ -12,6 +13,7 @@ export default async function StarterPrint({ params, searchParams }: { params: P
   return (
     <main className="pr-page">
       <PrintBar backHref={back} />
+      {round && <NoStartNote bundle={bundle} roundId={round.id} className="pr-note" />}
       <PrintHeader name={bundle.event.name} date={bundle.event.date} title={title} />
       {sheet.groups.length === 0 ? (
         <p>No groups yet. Make the pairings first.</p>

@@ -104,6 +104,21 @@ export function printGroups(b: EventBundle, roundId: string): PrintGroup[] {
   return out;
 }
 
+/**
+ * Teams that play (someone on them is not an alternate) but are in none of the round's groups,
+ * so they are not on the printed sheets.
+ */
+export function teamsWithoutStart(b: EventBundle, roundId: string): number {
+  const entryById = new Map(b.entries.map((e) => [e.id, e]));
+  const placed = new Set(b.groups.filter((g) => g.roundId === roundId).flatMap((g) => g.teamIds));
+  const playing = b.teams.filter((t) => t.entryIds.some((id) => entryById.has(id) && !entryById.get(id)!.alternate));
+  return playing.filter((t) => !placed.has(t.id)).length;
+}
+
+export function noStartText(n: number): string {
+  return `${n} ${n === 1 ? "team has" : "teams have"} no start and ${n === 1 ? "isn't" : "aren't"} on these sheets.`;
+}
+
 /** "Alan Reeves" -> "Reeves, Alan". One word stays as it is. */
 export function lastFirst(name: string): string {
   const w = name.trim().split(/\s+/);
@@ -141,6 +156,7 @@ export interface CartSet {
   groupLabel: string;
   /** Team names on this cart, in order, once each. */
   teams: string[];
+  /** hcp is the raw value ("NH" for no handicap): the starter sheet shows it, cart signs use hcpText. */
   players: { name: string; team: string; hcp: string; tee: string; status: PrintTeam["status"] }[];
 }
 
@@ -148,7 +164,7 @@ export interface CartSet {
 export function cartSets(groups: PrintGroup[]): CartSet[] {
   const out: CartSet[] = [];
   for (const g of groups) {
-    const players = g.teams.flatMap((t) => t.players.map((p) => ({ name: p.name, team: t.label, hcp: hcpText(p.hcp), tee: p.tee, status: t.status })));
+    const players = g.teams.flatMap((t) => t.players.map((p) => ({ name: p.name, team: t.label, hcp: p.hcp, tee: p.tee, status: t.status })));
     for (let i = 0; i < players.length; i += 2) {
       const set = players.slice(i, i + 2);
       out.push({ cart: out.length + 1, groupId: g.id, start: g.start, groupLabel: g.label, teams: [...new Set(set.map((p) => p.team))], players: set });
