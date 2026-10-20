@@ -55,6 +55,9 @@ export function flightAssignments(b: EventBundle): Map<string, number> {
   return out;
 }
 
+/** Shown before new teams replace teams that already have scores. */
+export const SCORES_WARNING = "Cards have been entered for these teams. Making new teams will hide those cards. Continue?";
+
 export function flightName(names: string[], i: number): string {
   return names[i]?.trim() || `${String.fromCharCode(65 + i)} Flight`;
 }

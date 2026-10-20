@@ -4,7 +4,8 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import ParSiGrid from "@/components/ParSiGrid";
 import { validateCourse, type Errors } from "@/lib/courseValidation";
-import { chooseCourse, saveCourse } from "./actions";
+import { Toast } from "@/components/Toast";
+import { chooseCourse, saveCourse, undoCourse, type CourseUndo } from "./actions";
 import TeeEditor, { type TeeRow } from "./TeeEditor";
 
 export type CourseRow = { id: string; name: string; pars: number[]; si: number[] };
@@ -16,11 +17,14 @@ export default function CourseEditor({
   courses,
   current,
   tees,
+  needsConfirm,
 }: {
   eventId: string;
   courses: { id: string; name: string }[];
   current: CourseRow | null;
   tees: TeeRow[];
+  /** Tees are assigned to players or scores exist: changing the course affects them. */
+  needsConfirm: boolean;
 }) {
   const router = useRouter();
   const [creating, setCreating] = useState(false);
@@ -30,6 +34,8 @@ export default function CourseEditor({
   const [errors, setErrors] = useState<Errors>({});
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
   const [pending, startTransition] = useTransition();
+  const [confirm, setConfirm] = useState<(() => void) | null>(null);
+  const [undo, setUndo] = useState<{ message: string; data: CourseUndo } | null>(null);
 
   const showForm = creating || current !== null;
 
@@ -44,10 +50,27 @@ export default function CourseEditor({
       return;
     }
     setCreating(false);
+    const go = () =>
+      startTransition(async () => {
+        const result = await chooseCourse(eventId, value || null);
+        if (!result.ok) setMessage({ kind: "error", text: result.error ?? "Couldn't change the course." });
+        else {
+          if (result.notice) setMessage({ kind: "ok", text: result.notice });
+          if (result.undo) setUndo({ message: "Course changed.", data: result.undo });
+        }
+        router.refresh();
+      });
+    if (current && needsConfirm && value !== current.id) setConfirm(() => go);
+    else go();
+  }
+
+  function runUndo() {
+    const u = undo;
+    setUndo(null);
+    if (!u) return;
     startTransition(async () => {
-      const result = await chooseCourse(eventId, value || null);
-      if (!result.ok) setMessage({ kind: "error", text: result.error ?? "Couldn't change the course." });
-      else if (result.notice) setMessage({ kind: "ok", text: result.notice });
+      const result = await undoCourse(eventId, u.data);
+      setMessage(result.ok ? { kind: "ok", text: "Course change undone." } : { kind: "error", text: result.error ?? "Couldn't undo." });
       router.refresh();
     });
   }
@@ -63,17 +86,21 @@ export default function CourseEditor({
       return;
     }
     setErrors({});
-    startTransition(async () => {
-      const result = await saveCourse(eventId, creating ? null : (current?.id ?? null), input);
-      if (result.ok) {
-        setCreating(false);
-        setMessage({ kind: "ok", text: "Course saved." });
-        router.refresh();
-      } else {
-        setErrors(result.errors ?? {});
-        setMessage({ kind: "error", text: result.error ?? "Fix the highlighted fields, then save again." });
-      }
-    });
+    const go = () =>
+      startTransition(async () => {
+        const result = await saveCourse(eventId, creating ? null : (current?.id ?? null), input);
+        if (result.ok) {
+          setCreating(false);
+          setMessage({ kind: "ok", text: "Course saved." });
+          if (result.undo) setUndo({ message: "Course changed.", data: result.undo });
+          router.refresh();
+        } else {
+          setErrors(result.errors ?? {});
+          setMessage({ kind: "error", text: result.error ?? "Fix the highlighted fields, then save again." });
+        }
+      });
+    if (creating && current && needsConfirm) setConfirm(() => go);
+    else go();
   }
 
   return (
@@ -88,6 +115,30 @@ export default function CourseEditor({
           <option value="new">New course…</option>
         </select>
       </label>
+
+      {confirm && (
+        <div className="note" role="alertdialog" aria-label="Confirm course change">
+          <p style={{ marginTop: 0 }}>
+            Players have tees picked or scores have been entered. Changing the course clears tees that are not on the new course and changes
+            handicaps and scores. Continue?
+          </p>
+          <div className="row row-gap">
+            <button
+              className="btn"
+              type="button"
+              disabled={pending}
+              onClick={() => {
+                const go = confirm;
+                setConfirm(null);
+                go();
+              }}
+            >
+              Continue
+            </button>
+            <button className="btn-quiet" type="button" onClick={() => setConfirm(null)}>Cancel</button>
+          </div>
+        </div>
+      )}
 
       {message && (
         <p className={message.kind === "ok" ? "ok" : "error"} role={message.kind === "ok" ? "status" : "alert"}>{message.text}</p>
@@ -117,6 +168,7 @@ export default function CourseEditor({
           <p className="muted">Tees can be changed but not removed.</p>
         </>
       )}
+      {undo && <Toast message={undo.message} onUndo={runUndo} onDone={() => setUndo(null)} />}
     </>
   );
 }

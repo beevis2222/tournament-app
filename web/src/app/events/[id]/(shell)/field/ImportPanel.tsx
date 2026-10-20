@@ -118,7 +118,7 @@ export default function ImportPanel({
     startTransition(async () => {
       const result = await makeTeams(eventId, "listed", sheetTeams);
       if (!result.ok) {
-        setError(result.error);
+        setError(result.needsConfirm ? "Cards have been entered for the current teams. Make new teams on the Teams screen, where you can confirm." : result.error);
         return;
       }
       setSheetTeams([]);

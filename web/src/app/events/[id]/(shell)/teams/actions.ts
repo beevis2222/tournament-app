@@ -5,18 +5,26 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { currentStaff, SIGNED_OUT } from "@/lib/db/auth";
 import { EVENT_NOT_FOUND, loadEvent } from "@/lib/db/events";
-import { flightAssignments, planTeams, type SheetGroup, type TeamDraft } from "@/lib/teamPlan";
+import { flightAssignments, planTeams, SCORES_WARNING, type SheetGroup, type TeamDraft } from "@/lib/teamPlan";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { hasCourse } from "@/lib/toEngine";
 import type { EventBundle } from "@/lib/types";
 
-type Fail = { ok: false; error: string };
+type Fail = { ok: false; error: string; needsConfirm?: true };
 /** What Undo needs: new teams to remove, old teams to bring back, and the alternate flags that changed. */
 export type TeamsUndo = { newTeamIds: string[]; oldTeamIds: string[]; becameAlternate: string[]; becamePlaying: string[] };
 export type TeamsResult = { ok: true; teams: number; alternates: number; undo: TeamsUndo } | Fail;
 
 const BAD: Fail = { ok: false, error: "That didn't look right. Reload the page and try again." };
 const SAVE_FAILED: Fail = { ok: false, error: "That didn't save. Try again." };
+
+const NEEDS_CONFIRM: Fail = { ok: false, error: SCORES_WARNING, needsConfirm: true };
+
+/** True when any score has been entered for the event's current teams. */
+function hasScores(bundle: EventBundle): boolean {
+  const current = new Set(bundle.teams.map((t) => t.id));
+  return bundle.scores.some((s) => current.has(s.teamId) && s.gross !== null);
+}
 
 const refresh = (eventId: string) => revalidatePath(`/events/${eventId}`, "layout");
 
@@ -100,7 +108,12 @@ const Groups = z
  * groups when `groups` is given. Uses every player in the field (alternate flags are reset).
  * Replaces the current teams; Undo brings them back.
  */
-export async function makeTeams(eventId: string, mode: "listed" | "balanced", groups?: SheetGroup[]): Promise<TeamsResult> {
+export async function makeTeams(
+  eventId: string,
+  mode: "listed" | "balanced",
+  groups?: SheetGroup[],
+  confirmScores?: boolean,
+): Promise<TeamsResult> {
   if (!(await currentStaff())) return { ok: false, error: SIGNED_OUT };
   if (mode !== "listed" && mode !== "balanced") return BAD;
   const g = groups === undefined ? undefined : Groups.safeParse(groups);
@@ -108,6 +121,7 @@ export async function makeTeams(eventId: string, mode: "listed" | "balanced", gr
   const bundle = await load(eventId);
   if ("ok" in bundle) return bundle;
   const size = bundle.event.settings.teamSize;
+  if (hasScores(bundle) && confirmScores !== true) return NEEDS_CONFIRM;
 
   if (g?.success) {
     const known = new Set(bundle.entries.map((e) => e.id));
@@ -128,12 +142,43 @@ export async function makeTeams(eventId: string, mode: "listed" | "balanced", gr
 }
 
 /** Removes all teams (Undo brings them back). Everyone in the field goes back to "not on a team". */
-export async function clearTeams(eventId: string): Promise<TeamsResult> {
+export async function clearTeams(eventId: string, confirmScores?: boolean): Promise<TeamsResult> {
   if (!(await currentStaff())) return { ok: false, error: SIGNED_OUT };
   const bundle = await load(eventId);
   if ("ok" in bundle) return bundle;
   if (!bundle.teams.length) return { ok: false, error: "There are no teams to clear." };
+  if (hasScores(bundle) && confirmScores !== true) return NEEDS_CONFIRM;
   return replaceTeams(eventId, bundle, [], []);
+}
+
+/**
+ * Brings back a set of removed teams (all removed at the same moment) and removes the current teams.
+ * Undo (undoTeams) reverses it. Alternate flags are left as they are.
+ */
+export async function restoreTeamSet(eventId: string, removedAt: string, confirmScores?: boolean): Promise<TeamsResult> {
+  if (!(await currentStaff())) return { ok: false, error: SIGNED_OUT };
+  if (!z.string().datetime({ offset: true }).safeParse(removedAt).success) return BAD;
+  const bundle = await load(eventId);
+  if ("ok" in bundle) return bundle;
+  if (hasScores(bundle) && confirmScores !== true) return NEEDS_CONFIRM;
+  const supabase = await createServerSupabase();
+  const found = await supabase.from("teams").select("id").eq("event_id", eventId).eq("deleted_at", removedAt);
+  if (found.error) return SAVE_FAILED;
+  const restoreIds = (found.data ?? []).map((t) => t.id);
+  if (!restoreIds.length) return { ok: false, error: "Those teams weren't found. Reload the page." };
+  const oldTeamIds = bundle.teams.map((t) => t.id);
+  const now = new Date().toISOString();
+  if (oldTeamIds.length) {
+    const del = await supabase.from("teams").update({ deleted_at: now }).in("id", oldTeamIds).eq("event_id", eventId);
+    if (del.error) return SAVE_FAILED;
+  }
+  const back = await supabase.from("teams").update({ deleted_at: null }).in("id", restoreIds).eq("event_id", eventId);
+  if (back.error) {
+    if (oldTeamIds.length) await supabase.from("teams").update({ deleted_at: null }).in("id", oldTeamIds).eq("event_id", eventId);
+    return SAVE_FAILED;
+  }
+  refresh(eventId);
+  return { ok: true, teams: restoreIds.length, alternates: 0, undo: { newTeamIds: restoreIds, oldTeamIds, becameAlternate: [], becamePlaying: [] } };
 }
 
 /** Reverses makeTeams or clearTeams. */

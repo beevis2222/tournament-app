@@ -4,7 +4,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Toast } from "@/components/Toast";
-import { clearTeams, makeTeams, moveEntry, setFlights, setTeamStatus, undoTeams, type TeamsResult, type TeamsUndo } from "./actions";
+import { SCORES_WARNING } from "@/lib/teamPlan";
+import { clearTeams, makeTeams, moveEntry, restoreTeamSet, setFlights, setTeamStatus, undoTeams, type TeamsResult, type TeamsUndo } from "./actions";
+
+export type RemovedSet = { removedAt: string; count: number; labels: string[] };
 
 export type PlayerRow = { id: string; name: string; index: number; nh: boolean };
 export type TeamRow = {
@@ -28,6 +31,8 @@ export default function TeamsView({
   teams,
   alternates,
   unassigned,
+  hasScores,
+  removedSets,
 }: {
   eventId: string;
   teamMode: "listed" | "balanced";
@@ -38,12 +43,15 @@ export default function TeamsView({
   teams: TeamRow[];
   alternates: PlayerRow[];
   unassigned: PlayerRow[];
+  hasScores: boolean;
+  removedSets: RemovedSet[];
 }) {
   const router = useRouter();
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
   const [undo, setUndo] = useState<{ message: string; data: TeamsUndo } | null>(null);
   const [pending, startTransition] = useTransition();
+  const [confirm, setConfirm] = useState<(() => void) | null>(null);
 
   const courseLink = <Link href={`/events/${eventId}/course`}>Choose a course first</Link>;
 
@@ -56,19 +64,34 @@ export default function TeamsView({
     router.refresh();
   }
 
-  function make(mode: "listed" | "balanced") {
+  /** Runs `go` right away, or after an explicit Continue when cards have been entered for the current teams. */
+  function guarded(go: (confirmed: boolean) => void) {
     setError("");
     setInfo("");
-    startTransition(async () => {
-      const result = await makeTeams(eventId, mode);
-      after(result, result.ok ? `Made ${result.teams} teams${result.alternates ? ` and ${result.alternates} alternates` : ""}.` : "");
-    });
+    if (hasScores) setConfirm(() => () => go(true));
+    else go(false);
+  }
+
+  function make(mode: "listed" | "balanced") {
+    guarded((confirmed) =>
+      startTransition(async () => {
+        const result = await makeTeams(eventId, mode, undefined, confirmed);
+        after(result, result.ok ? `Made ${result.teams} teams${result.alternates ? ` and ${result.alternates} alternates` : ""}.` : "");
+      }),
+    );
   }
 
   function clear() {
-    setError("");
-    setInfo("");
-    startTransition(async () => after(await clearTeams(eventId), "Teams cleared."));
+    guarded((confirmed) => startTransition(async () => after(await clearTeams(eventId, confirmed), "Teams cleared.")));
+  }
+
+  function restore(removedAt: string) {
+    guarded((confirmed) =>
+      startTransition(async () => {
+        const result = await restoreTeamSet(eventId, removedAt, confirmed);
+        after(result, result.ok ? `Restored ${result.teams} ${result.teams === 1 ? "team" : "teams"}.` : "");
+      }),
+    );
   }
 
   function runUndo() {
@@ -124,6 +147,26 @@ export default function TeamsView({
   return (
     <>
       {error && <p className="error" role="alert">{error}</p>}
+      {confirm && (
+        <div className="note" role="alertdialog" aria-label="Confirm new teams">
+          <p style={{ marginTop: 0 }}>{SCORES_WARNING}</p>
+          <div className="row row-gap">
+            <button
+              className="btn"
+              type="button"
+              disabled={pending}
+              onClick={() => {
+                const go = confirm;
+                setConfirm(null);
+                go();
+              }}
+            >
+              Continue
+            </button>
+            <button className="btn-quiet" type="button" onClick={() => setConfirm(null)}>Cancel</button>
+          </div>
+        </div>
+      )}
       {info && <p className="ok" role="status">{info}</p>}
 
       <div className="row row-gap">
@@ -213,6 +256,23 @@ export default function TeamsView({
             <div key={p.id} className="row" style={{ padding: "4px 0" }}>
               <span>{p.name} <span className="muted">{showIndex(p)}</span></span>
               {moveSelect(p, "")}
+            </div>
+          ))}
+        </>
+      )}
+
+      {removedSets.length > 0 && (
+        <>
+          <h3>Recently removed team sets</h3>
+          {removedSets.map((s) => (
+            <div key={s.removedAt} className="row" style={{ padding: "4px 0", justifyContent: "space-between" }}>
+              <span>
+                {s.count} {s.count === 1 ? "team" : "teams"} ({s.labels.join(", ")}
+                {s.count > s.labels.length ? ", …" : ""}) · removed <span suppressHydrationWarning>{new Date(s.removedAt).toLocaleString()}</span>
+              </span>
+              <button className="btn-quiet" type="button" disabled={pending} onClick={() => restore(s.removedAt)}>
+                Restore this set
+              </button>
             </div>
           ))}
         </>
