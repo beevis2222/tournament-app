@@ -156,9 +156,7 @@ export async function loadEvent(id: string): Promise<EventBundle> {
       entryIds: members.filter((m) => m.team_id === t.id && entryIds.has(m.entry_id)).map((m) => m.entry_id),
     })),
     rounds: rounds.map((r) => ({ id: r.id, number: r.number, mode: r.mode as EventBundle["rounds"][number]["mode"] })),
-    // Groups with no team left in them (everyone moved out, or the teams were removed) are left out.
-    groups: groups
-      .map((g) => ({
+    groups: groups.map((g) => ({
         id: g.id,
         roundId: g.round_id,
         startHole: g.start_hole,
@@ -166,8 +164,7 @@ export async function loadEvent(id: string): Promise<EventBundle> {
         label: g.label,
         sort: g.sort,
         teamIds: groupTeams.filter((gt) => gt.group_id === g.id && teamIdSet.has(gt.team_id)).map((gt) => gt.team_id),
-      }))
-      .filter((g) => g.teamIds.length > 0),
+    })),
     scores: scores.map((s) => ({ roundId: s.round_id, teamId: s.team_id as string, hole: s.hole, gross: s.gross })),
   };
 }

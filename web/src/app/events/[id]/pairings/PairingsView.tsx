@@ -8,7 +8,7 @@ import type { Problem } from "@/lib/pairings";
 import { makePairings, moveTeam, sameAsRound1, setStart, undoPairings, type PairingsResult, type PairingsUndo } from "./actions";
 
 export type TeamChip = { id: string; label: string; players: string[] };
-export type GroupRow = { id: string; label: string; start: string; startValue: string; teams: TeamChip[] };
+export type GroupRow = { id: string; label: string; start: string; startValue: string; startMismatch: boolean; teams: TeamChip[] };
 export type RoundRow = { number: number; groups: GroupRow[]; unplaced: TeamChip[] };
 
 function StartInput({ value, type, disabled, onSave }: { value: string; type: "shotgun" | "teetimes"; disabled: boolean; onSave: (v: string) => void }) {
@@ -162,12 +162,14 @@ export default function PairingsView({
             <div key={g.id} className="tee-card" style={{ margin: 0 }}>
               <div className="row" style={{ justifyContent: "space-between" }}>
                 <strong style={{ fontFamily: "var(--display)", fontSize: 20 }}>{g.label}</strong>
-                {editing ? (
+                {editing && !g.startMismatch ? (
                   <StartInput key={`${g.id}:${g.startValue}`} value={g.startValue} type={startType} disabled={pending} onSave={(v) => start(g.id, v)} />
                 ) : (
                   <strong>{g.start}</strong>
                 )}
               </div>
+              {editing && g.startMismatch && <p className="muted" style={{ margin: "4px 0" }}>Start type changed. Make pairings again.</p>}
+              {g.teams.length === 0 && <p className="muted" style={{ margin: "6px 0" }}>Empty</p>}
               {g.teams.map((t) => (
                 <div key={t.id} style={{ padding: "6px 0" }}>
                   <div className="row" style={{ justifyContent: "space-between" }}>
@@ -204,7 +206,7 @@ export default function PairingsView({
           {errors.map((p, i) => (
             <li key={`e${i}`} className="error" style={{ margin: "0 0 6px" }}>
               {p.text}
-              {p.text === "No course pars set." && <> <Link href={`/events/${eventId}/course`}>Choose a course</Link></>}
+              {p.code === "no-course" && <> <Link href={`/events/${eventId}/course`}>Choose a course</Link></>}
             </li>
           ))}
           {warnings.map((p, i) => (

@@ -6,6 +6,7 @@ import { z } from "zod";
 import { currentStaff, SIGNED_OUT } from "@/lib/db/auth";
 import { EVENT_NOT_FOUND, loadEvent } from "@/lib/db/events";
 import { buildGroups, type DraftGroup } from "@/lib/pairings";
+import { checkStart, planMove } from "@/lib/pairingEdit";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { EventSettings, type EventBundle } from "@/lib/types";
 
@@ -41,8 +42,10 @@ async function replaceGroups(eventId: string, roundId: string, drafts: DraftGrou
   if (current.error) return SAVE_FAILED;
   const oldGroupIds = (current.data ?? []).map((g) => g.id);
   const newGroupIds = drafts.map(() => randomUUID());
-  const undoNew = async () => {
-    if (newGroupIds.length) await supabase.from("groups").update({ deleted_at: now }).in("id", newGroupIds).eq("round_id", roundId);
+  // Takes the new groups back out after a failure. If even that fails, say so rather than hide it.
+  const fail = async (): Promise<Fail> => {
+    const { error } = await supabase.from("groups").update({ deleted_at: now }).in("id", newGroupIds).eq("round_id", roundId);
+    return error ? { ok: false, error: "That didn't save, and the half-made pairings couldn't be cleared. Reload the page and check this round." } : SAVE_FAILED;
   };
 
   const ins = await supabase.from("groups").insert(
@@ -55,20 +58,14 @@ async function replaceGroups(eventId: string, roundId: string, drafts: DraftGrou
       start_time: d.startTime,
     })),
   );
-  if (ins.error) return SAVE_FAILED;
+  if (ins.error) return fail();
   const links = await supabase
     .from("group_teams")
     .insert(drafts.flatMap((d, i) => d.teamIds.map((teamId, j) => ({ group_id: newGroupIds[i], team_id: teamId, sort: j }))));
-  if (links.error) {
-    await undoNew();
-    return SAVE_FAILED;
-  }
+  if (links.error) return fail();
   if (oldGroupIds.length) {
     const del = await supabase.from("groups").update({ deleted_at: now }).in("id", oldGroupIds).eq("round_id", roundId);
-    if (del.error) {
-      await undoNew();
-      return SAVE_FAILED;
-    }
+    if (del.error) return fail();
   }
   refresh(eventId);
   return { ok: true, groups: drafts.length, undo: { newGroupIds, oldGroupIds } };
@@ -86,7 +83,10 @@ export async function makePairings(eventId: string, roundNumber: number): Promis
   const round = roundOf(bundle, roundNumber);
   if (!round) return { ok: false, error: "That round wasn't found." };
   if (!bundle.teams.length) return { ok: false, error: "Make teams first." };
-  return replaceGroups(eventId, round.id, buildGroups(bundle.teams.map((t) => t.id), bundle.event.settings));
+  const alternates = new Set(bundle.entries.filter((e) => e.alternate).map((e) => e.id));
+  const playing = bundle.teams.filter((t) => t.entryIds.some((id) => !alternates.has(id)));
+  if (!playing.length) return { ok: false, error: "No team has players yet. Make teams first." };
+  return replaceGroups(eventId, round.id, buildGroups(playing.map((t) => t.id), bundle.event.settings));
 }
 
 /** Copies round 1's groups (starts and teams) into a later round. */
@@ -114,7 +114,17 @@ export async function undoPairings(eventId: string, undo: PairingsUndo): Promise
   if (!parsed.success) return BAD;
   const u = parsed.data;
   const supabase = await createServerSupabase();
+  const CHANGED: Fail = { ok: false, error: "The pairings changed since then, so Undo isn't available." };
   if (u.newGroupIds.length) {
+    // Only undo if the round's live groups are exactly the ones Make created.
+    const made = await supabase.from("groups").select("round_id").in("id", u.newGroupIds);
+    if (made.error) return SAVE_FAILED;
+    const roundIds = new Set((made.data ?? []).map((g) => g.round_id));
+    if (roundIds.size !== 1) return CHANGED;
+    const live = await supabase.from("groups").select("id").eq("round_id", [...roundIds][0]).is("deleted_at", null);
+    if (live.error) return SAVE_FAILED;
+    const liveIds = (live.data ?? []).map((g) => g.id);
+    if (liveIds.length !== u.newGroupIds.length || !u.newGroupIds.every((id) => liveIds.includes(id))) return CHANGED;
     const { error } = await supabase.from("groups").update({ deleted_at: new Date().toISOString() }).in("id", u.newGroupIds);
     if (error) return SAVE_FAILED;
   }
@@ -150,23 +160,22 @@ export async function moveTeam(teamId: string, toGroupId: string): Promise<{ ok:
     .in("group_id", (roundGroups.data ?? []).map((g) => g.id));
   if (links.error) return SAVE_FAILED;
   const from = (links.data ?? []).map((l) => l.group_id);
-  if (from.length > 1) return { ok: false, error: "That team is in more than one group. Make pairings again." };
-  if (from[0] === toGroupId) return { ok: true };
+  const plan = planMove(from, toGroupId);
+  if (plan.kind === "error") return { ok: false, error: plan.error };
+  if (plan.kind === "none") return { ok: true };
 
   const sorts = await supabase.from("group_teams").select("sort").eq("group_id", toGroupId);
   if (sorts.error) return SAVE_FAILED;
   const sort = (sorts.data ?? []).reduce((m, r) => Math.max(m, r.sort + 1), 0);
 
-  const res = from.length
-    ? await supabase.from("group_teams").update({ group_id: toGroupId, sort }).eq("team_id", teamId).eq("group_id", from[0]).select("team_id")
+  const res = plan.kind === "update"
+    ? await supabase.from("group_teams").update({ group_id: toGroupId, sort }).eq("team_id", teamId).eq("group_id", plan.from).select("team_id")
     : await supabase.from("group_teams").insert({ group_id: toGroupId, team_id: teamId, sort }).select("team_id");
   if (res.error || !res.data?.length) return SAVE_FAILED;
   refresh(eventId);
   return { ok: true };
 }
 
-const HOLE = /^(1[0-8]|[1-9])[A-Za-z]?$/;
-const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 /** Changes a group's start: a hole label ("1", "10A") for shotgun events, "HH:MM" (24 hour) for tee times. */
 export async function setStart(groupId: string, start: string): Promise<{ ok: true } | Fail> {
@@ -182,15 +191,9 @@ export async function setStart(groupId: string, start: string): Promise<{ ok: tr
   if (ev.error || !ev.data) return SAVE_FAILED;
   const settings = EventSettings.parse(ev.data.settings ?? {});
 
-  const text = start.trim();
-  let patch: { start_hole: string | null; start_time: string | null };
-  if (settings.start === "shotgun") {
-    if (!HOLE.test(text)) return { ok: false, error: "Type a hole from 1 to 18, like 7 or 10A." };
-    patch = { start_hole: text.toUpperCase(), start_time: null };
-  } else {
-    if (!TIME.test(text)) return { ok: false, error: "Pick a start time." };
-    patch = { start_hole: null, start_time: text };
-  }
+  const checked = checkStart(settings.start, start);
+  if (!checked.ok) return checked;
+  const patch = checked.patch;
   const { data, error } = await supabase.from("groups").update(patch).eq("id", groupId).select("id");
   if (error || !data?.length) return SAVE_FAILED;
   refresh(round.data.event_id);

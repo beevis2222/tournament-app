@@ -8,6 +8,8 @@ export interface DraftGroup {
 export interface Problem {
   level: "error" | "warning";
   text: string;
+  /** Lets screens react to a specific problem without matching its wording. */
+  code?: "no-course";
 }
 
 type StartSettings = Pick<EventSettings, "start" | "startTime" | "interval">;
@@ -67,6 +69,7 @@ export function preEventCheck(b: EventBundle): Problem[] {
     const dup = new Set<string>();
     for (const g of groups) {
       if (!g.startHole && !g.startTime) continue;
+      if (g.teamIds.length === 0) continue; // an empty group holds a start slot but is not a clash
       for (const id of g.teamIds) started.add(id);
       const label = display(g);
       if (seen.has(label)) dup.add(label);
@@ -79,7 +82,7 @@ export function preEventCheck(b: EventBundle): Problem[] {
   }
 
   if (b.course.pars.length !== 18 || b.course.pars.some((p) => typeof p !== "number")) {
-    out.push({ level: "error", text: "No course pars set." });
+    out.push({ level: "error", text: "No course pars set.", code: "no-course" });
   }
   return out;
 }

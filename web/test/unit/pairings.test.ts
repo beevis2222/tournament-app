@@ -99,9 +99,17 @@ describe("preEventCheck", () => {
       ]),
     );
   });
+  it("does not count an empty group sharing a start as a duplicate", () => {
+    const b = bundle();
+    b.groups = [
+      { id: "g1", roundId: "r1", startHole: "1", startTime: null, label: "", sort: 0, teamIds: ["t1"] },
+      { id: "g2", roundId: "r1", startHole: "1", startTime: null, label: "", sort: 1, teamIds: [] },
+    ];
+    expect(preEventCheck(b).map((x) => x.text)).not.toContain("Two groups start at 1 in round 1.");
+  });
   it("flags missing pars", () => {
     const b = bundle();
     b.course.pars = [];
-    expect(preEventCheck(b)).toContainEqual({ level: "error", text: "No course pars set." });
+    expect(preEventCheck(b)).toContainEqual({ level: "error", text: "No course pars set.", code: "no-course" });
   });
 });
