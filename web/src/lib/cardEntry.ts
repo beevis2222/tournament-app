@@ -33,3 +33,28 @@ export function liveEvent(base: ScrambleEvent, modes: RoundMode[], cards: Record
 export function sumHoles(card: (number | null)[], holes: number[]): number {
   return holes.reduce((a, h) => a + (card[h] ?? 0), 0);
 }
+
+/**
+ * Save bookkeeping for one hole box. `confirmed` is what the database is known to hold,
+ * `desired` is the latest value typed, `sending` is true while a save is in flight.
+ * At most one save per hole is in flight; when it finishes, the latest typed value is sent if it differs.
+ */
+export type HoleSync = { confirmed: number | null; desired: number | null; sending: boolean };
+export type SyncStep = { state: HoleSync; send: { value: number | null } | null };
+
+export const newHoleSync = (confirmed: number | null): HoleSync => ({ confirmed, desired: confirmed, sending: false });
+
+/** The box was left with this value. Says whether to send it now. */
+export function wantValue(s: HoleSync, desired: number | null): SyncStep {
+  if (s.sending) return { state: { ...s, desired }, send: null };
+  if (desired === s.confirmed) return { state: { ...s, desired }, send: null };
+  return { state: { ...s, desired, sending: true }, send: { value: desired } };
+}
+
+/** A save of `sent` finished. If the latest typed value differs from what is now confirmed, send it next. */
+export function saveFinished(s: HoleSync, sent: number | null, ok: boolean): SyncStep {
+  if (!ok) return { state: { ...s, sending: false }, send: null };
+  const confirmed = sent;
+  if (s.desired !== confirmed) return { state: { ...s, confirmed, sending: true }, send: { value: s.desired } };
+  return { state: { ...s, confirmed, sending: false }, send: null };
+}

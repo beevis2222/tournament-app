@@ -1,9 +1,9 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { holesInPlay, scrambleRound, strokesOnHole, type RoundMode, type ScrambleEvent, type Status } from "@starter/scoring";
 import HoleGrid from "@/components/HoleGrid";
-import { BAD_SCORE, liveEvent, parseGross, sumHoles } from "@/lib/cardEntry";
+import { BAD_SCORE, liveEvent, newHoleSync, parseGross, saveFinished, sumHoles, wantValue, type HoleSync } from "@/lib/cardEntry";
 import { saveScore, setRoundMode, setTeamStatus } from "./actions";
 
 type Card = { text: string[]; value: (number | null)[]; saved: (number | null)[] };
@@ -55,8 +55,23 @@ export default function CardsView({
   const [failed, setFailed] = useState<Record<string, string>>({}); // failed saves
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false); // a round mode or team status change is in flight
+  const [pending, setPending] = useState<Record<string, string>>({}); // saves in flight, by "r:team:hole"
   const latest = useRef(cards);
   latest.current = cards;
+  const sync = useRef<Record<string, HoleSync>>({}); // per hole: what the database holds, what was typed last, whether a save is in flight
+
+  const pendingCount = Object.keys(pending).length;
+  const failedCount = Object.keys(failed).length;
+  const unsaved = pendingCount + failedCount > 0;
+  useEffect(() => {
+    if (!unsaved) return;
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [unsaved]);
 
   const cardOf = (r: number, t: string): Card => cards[`${r}:${t}`] ?? { text: Array(18).fill(""), value: emptyCard(), saved: emptyCard() };
   const live = liveEvent(ev, modes, Object.fromEntries(Object.entries(cards).map(([k, c]) => [k, c.value])));
@@ -104,20 +119,37 @@ export default function CardsView({
       return;
     }
     const v = p.kind === "empty" ? null : p.value;
-    if (v === c.saved[h]) {
-      setFailed((f) => without(f, k));
+    const state = sync.current[k] ?? newHoleSync(c.saved[h]);
+    const step = wantValue(state, v);
+    sync.current[k] = step.state;
+    if (!step.send) {
+      if (!step.state.sending) setFailed((f) => without(f, k));
       return;
     }
-    // A dropped connection makes the action throw instead of returning an error.
-    const r = await saveScore(round.id, team.id, h + 1, v).catch(() => ({ ok: false as const, error: "Check your connection and try again." }));
-    if (r.ok) {
-      setCards((all) => {
-        const cur = all[key];
-        return { ...all, [key]: { ...cur, saved: cur.saved.map((s, i) => (i === h ? v : s)) } };
-      });
-      setFailed((f) => without(f, k));
-    } else {
-      setFailed((f) => ({ ...f, [k]: `Not saved. ${r.error}` }));
+    await flush(k, key, round.id, team.id, h, step.send.value);
+  }
+
+  /** Sends one value; when it lands, sends the latest typed value if that changed meanwhile. */
+  async function flush(k: string, cardKey: string, roundId: string, teamKey: string, h: number, first: number | null) {
+    let next: { value: number | null } | null = { value: first };
+    while (next) {
+      const sent: number | null = next.value;
+      setPending((p) => ({ ...p, [k]: "1" }));
+      // A dropped connection makes the action throw instead of returning an error.
+      const r = await saveScore(roundId, teamKey, h + 1, sent).catch(() => ({ ok: false as const, error: "Check your connection and try again." }));
+      const step = saveFinished(sync.current[k], sent, r.ok);
+      sync.current[k] = step.state;
+      if (r.ok) {
+        setCards((all) => {
+          const cur = all[cardKey];
+          return { ...all, [cardKey]: { ...cur, saved: cur.saved.map((s, i) => (i === h ? sent : s)) } };
+        });
+        setFailed((f) => without(f, k));
+      } else {
+        setFailed((f) => ({ ...f, [k]: `Not saved. ${r.error}` }));
+      }
+      next = step.send;
+      if (!next) setPending((p) => without(p, k));
     }
   }
 
@@ -171,11 +203,16 @@ export default function CardsView({
         </div>
       )}
 
+      <p className="muted" role="status" aria-live="polite" style={{ margin: "0 0 10px" }} data-testid="save-status">
+        {pendingCount > 0 ? "Saving…" : failedCount > 0 ? `${failedCount} not saved` : "All saved"}
+      </p>
+
       <div style={{ display: "grid", gridTemplateColumns: "minmax(200px, 260px) 1fr", gap: 20, alignItems: "start" }}>
         <ul className="team-pick" aria-label="Teams" style={{ listStyle: "none", margin: 0, padding: 0 }}>
           {teams.map((t) => {
             const thru = scrambleRound(live, t, roundIdx).thru;
             const st = statuses[t.id];
+            const hasUnsaved = [...Object.keys(pending), ...Object.keys(failed)].some((k2) => k2.split(":")[1] === t.id);
             return (
               <li key={t.id}>
                 <button
@@ -186,7 +223,7 @@ export default function CardsView({
                   style={{ width: "100%", textAlign: "left", marginBottom: 6, display: "flex", justifyContent: "space-between", gap: 8 }}
                 >
                   <span>{t.name}{st ? ` (${statusLabel(st)})` : ""}</span>
-                  <span>thru {thru}</span>
+                  <span>{hasUnsaved ? "● not saved · " : ""}thru {thru}</span>
                 </button>
               </li>
             );

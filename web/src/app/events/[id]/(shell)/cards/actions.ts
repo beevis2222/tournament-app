@@ -14,7 +14,6 @@ const uuid = z.string().uuid();
 
 /** Saves (or, with null, clears) one team's gross score on one hole. Every change is logged by the database. */
 export async function saveScore(roundId: string, teamId: string, hole: number, gross: number | null): Promise<Result> {
-  if (!(await currentStaff())) return { ok: false, error: SIGNED_OUT };
   const ok =
     uuid.safeParse(roundId).success &&
     uuid.safeParse(teamId).success &&
@@ -22,13 +21,10 @@ export async function saveScore(roundId: string, teamId: string, hole: number, g
     (gross === null || (Number.isInteger(gross) && gross >= 1 && gross <= 20));
   if (!ok) return { ok: false, error: BAD };
   const supabase = await createServerSupabase();
-  // The round and the team must belong to the same event (the database checks too).
-  const [round, team] = await Promise.all([
-    supabase.from("rounds").select("event_id").eq("id", roundId).maybeSingle(),
-    supabase.from("teams").select("event_id").eq("id", teamId).maybeSingle(),
-  ]);
-  if (round.error || team.error) return { ok: false, error: SAVE_FAILED };
-  if (!round.data || !team.data || round.data.event_id !== team.data.event_id) return { ok: false, error: BAD };
+  // Speed matters here: one sign-in check, then the save. The database limits the write to this club's rows
+  // and rejects a round and team from different events (cross_event_reference).
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return { ok: false, error: SIGNED_OUT };
   // The generated type says p_gross is a number; null clears the hole.
   const { error } = await supabase.rpc("save_score", {
     p_round: roundId,
