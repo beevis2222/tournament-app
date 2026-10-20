@@ -24,4 +24,5 @@ Piece 1 (the shop-only 4-man scramble) is built and tested end to end. It is not
 - `npm test` at the top folder runs the scoring tests and the app tests.
 - `npm run e2e -w web` runs one whole charity outing in a real browser: sign up, make a club, import 32 players, make teams, pair them, enter all the cards, then check the leaderboard, prizes and print pages against the scoring engine. It builds and starts the app itself on port 3100.
 - The outing test only ever uses the **starter-test** Supabase project, never your real club. It refuses to start unless starter-test has no clubs, and it empties starter-test again when it finishes. If a run is killed halfway, empty it with `node web/e2e/clean-test-db.mjs clean`.
+- Before the first run, `web/.env.test.local` must exist (it is not in git) with the starter-test project address and publishable key. Never put the real club's keys in it.
 - The first time on a computer, run `npx playwright install chromium` inside `web/`. The Supabase command line must be linked to starter-test (`npx supabase link --project-ref adotnhqartwywzkhfbkt` inside `web/`).

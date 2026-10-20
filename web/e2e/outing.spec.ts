@@ -183,11 +183,9 @@ test("a whole charity outing, from sign-up to prizes and print sheets", async ({
 
   // ---- Cards: all 8 teams ----
   await page.goto(`${base}/cards`);
-  // Each score box saves on its own, one at a time (about a second each), so count the finished saves.
-  let saves = 0;
-  page.on("response", (r) => {
-    if (r.request().method() === "POST" && r.request().headers()["next-action"] && r.ok()) saves++;
-  });
+  // A second page reads what the server has kept (saves are queued one at a time, about a second each).
+  const check = await page.context().newPage();
+  await check.goto(`${base}/cards`);
   for (let n = 1; n <= 8; n++) {
     await page.locator('ul[aria-label="Teams"]').getByRole("button", { name: new RegExp(`^Team ${n}\\b`) }).click();
     for (let h = 0; h < 18; h++) {
@@ -195,13 +193,13 @@ test("a whole charity outing, from sign-up to prizes and print sheets", async ({
       await box.fill(String(grossFor(n, h)));
       await box.press("Enter");
     }
-    await expect.poll(() => saves, { message: `saves for Team ${n}`, timeout: 90_000 }).toBeGreaterThanOrEqual(n * 18);
+    await expect(page.locator(".save-failed")).toHaveCount(0);
+    await expect(async () => {
+      await check.reload();
+      await expect(check.locator('ul[aria-label="Teams"]').getByRole("button", { name: new RegExp(`^Team ${n} thru 18$`) })).toBeVisible({ timeout: 2000 });
+    }).toPass({ timeout: 120_000, intervals: [2000] });
   }
-  // What the server has kept (not what the screen remembers): every team shows 18 holes after a reload.
-  await page.reload();
-  for (let n = 1; n <= 8; n++) {
-    await expect(page.locator('ul[aria-label="Teams"]').getByRole("button", { name: `Team ${n} thru 18` })).toBeVisible();
-  }
+  await check.close();
 
   // ---- Board matches the engine ----
   const kinds = scrambleBoards(ev);
@@ -240,7 +238,7 @@ test("a whole charity outing, from sign-up to prizes and print sheets", async ({
     const res = await page.goto(`${base}/print/${slug}`);
     expect(res?.status(), slug).toBe(200);
     const text = await page.locator("main").innerText();
-    for (const label of labels) expect(text, `${slug} shows ${label}`).toContain(label);
+    for (const label of labels) expect(text, `${slug} shows ${label}`).toMatch(new RegExp(`\\b${label}\\b`));
   }
   // The alpha list is by player ("Last, First"), not by team: every player must be on it.
   const alpha = await page.goto(`${base}/print/alpha`);

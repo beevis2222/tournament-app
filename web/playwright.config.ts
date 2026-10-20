@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parseEnv } from "node:util";
 import { defineConfig, devices } from "@playwright/test";
@@ -17,6 +18,8 @@ export default defineConfig({
   workers: 1,
   retries: 0,
   reporter: [["list"]],
+  // Outside OneDrive, which locks the trace files while syncing.
+  outputDir: join(tmpdir(), "starter-e2e-results"),
   globalSetup: "./e2e/global-setup.ts",
   globalTeardown: "./e2e/global-teardown.ts",
   use: { baseURL: `http://localhost:${PORT}`, trace: "retain-on-failure" },

@@ -7,8 +7,9 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-export const TEST_REF = "adotnhqartwywzkhfbkt";
-export const PRODUCTION_REF = "sowukjehokbhjkjlzqio";
+const refs = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "refs.json"), "utf8"));
+export const TEST_REF = refs.testRef;
+export const PRODUCTION_REF = refs.productionRef;
 const webDir = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 function assertLinkedToTest() {
@@ -20,7 +21,7 @@ function assertLinkedToTest() {
 }
 
 function query(sql) {
-  const run = spawnSync(`npx supabase@latest db query --linked ${JSON.stringify(sql)}`, { cwd: webDir, shell: true, encoding: "utf8" });
+  const run = spawnSync(`npx supabase db query --linked ${JSON.stringify(sql)}`, { cwd: webDir, shell: true, encoding: "utf8" });
   if (run.status !== 0) throw new Error(`Database command failed:\n${run.stdout}\n${run.stderr}`);
   return `${run.stdout}`;
 }
