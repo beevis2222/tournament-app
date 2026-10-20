@@ -24,10 +24,12 @@ const STATUSES: { value: Status | ""; label: string }[] = [
 const emptyCard = (): (number | null)[] => Array(18).fill(null);
 
 export default function CardsView({
+  eventId,
   ev,
   rounds,
   teamIds,
 }: {
+  eventId: string;
   ev: ScrambleEvent;
   rounds: { id: string; number: number }[];
   teamIds: string[];
@@ -52,6 +54,7 @@ export default function CardsView({
   const [errors, setErrors] = useState<Record<string, string>>({}); // bad numbers, by "r:team:hole"
   const [failed, setFailed] = useState<Record<string, string>>({}); // failed saves
   const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false); // a round mode or team status change is in flight
   const latest = useRef(cards);
   latest.current = cards;
 
@@ -119,25 +122,31 @@ export default function CardsView({
   }
 
   async function changeMode(mode: RoundMode) {
+    if (busy) return;
+    setBusy(true);
     const before = modes[roundIdx];
     setMessage("");
     setModes((m) => m.map((x, i) => (i === roundIdx ? mode : x)));
-    const r = await setRoundMode(round.id, mode).catch(() => ({ ok: false as const, error: "Check your connection and try again." }));
+    const r = await setRoundMode(eventId, round.id, mode).catch(() => ({ ok: false as const, error: "Check your connection and try again." }));
     if (!r.ok) {
       setModes((m) => m.map((x, i) => (i === roundIdx ? before : x)));
       setMessage(r.error);
     }
+    setBusy(false);
   }
 
   async function changeStatus(status: Status | "") {
+    if (busy) return;
+    setBusy(true);
     const before = statuses[team.id];
     setMessage("");
     setStatuses((s) => ({ ...s, [team.id]: status || undefined }));
-    const r = await setTeamStatus(team.id, status || null).catch(() => ({ ok: false as const, error: "Check your connection and try again." }));
+    const r = await setTeamStatus(eventId, team.id, status || null).catch(() => ({ ok: false as const, error: "Check your connection and try again." }));
     if (!r.ok) {
       setStatuses((s) => ({ ...s, [team.id]: before }));
       setMessage(r.error);
     }
+    setBusy(false);
   }
 
   const status = statuses[team.id];
@@ -195,7 +204,7 @@ export default function CardsView({
             <div className="row row-gap">
               <label>
                 Round{" "}
-                <select aria-label="Round mode" value={modes[roundIdx]} onChange={(e) => changeMode(e.target.value as RoundMode)}>
+                <select aria-label="Round mode" disabled={busy} value={modes[roundIdx]} onChange={(e) => changeMode(e.target.value as RoundMode)}>
                   {MODES.map((m) => (
                     <option key={m.value} value={m.value}>{m.label}</option>
                   ))}
@@ -203,7 +212,7 @@ export default function CardsView({
               </label>
               <label>
                 Team{" "}
-                <select aria-label="Team status" value={status ?? ""} onChange={(e) => changeStatus(e.target.value as Status | "")}>
+                <select aria-label="Team status" disabled={busy} value={status ?? ""} onChange={(e) => changeStatus(e.target.value as Status | "")}>
                   {STATUSES.map((s) => (
                     <option key={s.value} value={s.value}>{s.label}</option>
                   ))}

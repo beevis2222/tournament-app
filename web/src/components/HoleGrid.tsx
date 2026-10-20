@@ -56,7 +56,9 @@ export default function HoleGrid(p: HoleGridProps) {
     }
   }
 
-  const failedHoles = Object.keys(p.failed).map(Number).sort((a, b) => a - b);
+  // Messages only for holes on screen (a hole hidden by Front / Back 9 only has no box to point at).
+  const visible = (h: number) => p.holes.includes(h);
+  const failedHoles = Object.keys(p.failed).map(Number).filter(visible).sort((a, b) => a - b);
 
   return (
     <div>
@@ -120,7 +122,7 @@ export default function HoleGrid(p: HoleGridProps) {
           </tbody>
         </table>
       </div>
-      {Object.entries(p.errors).map(([h, msg]) => (
+      {Object.entries(p.errors).filter(([h]) => visible(Number(h))).map(([h, msg]) => (
         <p key={h} className="error" role="alert">Hole {Number(h) + 1}: {msg}</p>
       ))}
       {failedHoles.map((h) => (

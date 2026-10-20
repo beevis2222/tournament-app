@@ -37,7 +37,7 @@ export default async function CardsPage({ params }: { params: Promise<{ id: stri
       {playing.size === 0 ? (
         <p className="muted">No teams to score yet. Make teams on the Teams screen first.</p>
       ) : (
-        <CardsView ev={ev} rounds={rounds} teamIds={[...playing]} />
+        <CardsView eventId={id} ev={ev} rounds={rounds} teamIds={[...playing]} />
       )}
     </>
   );

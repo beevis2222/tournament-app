@@ -22,6 +22,13 @@ export async function saveScore(roundId: string, teamId: string, hole: number, g
     (gross === null || (Number.isInteger(gross) && gross >= 1 && gross <= 20));
   if (!ok) return { ok: false, error: BAD };
   const supabase = await createServerSupabase();
+  // The round and the team must belong to the same event (the database checks too).
+  const [round, team] = await Promise.all([
+    supabase.from("rounds").select("event_id").eq("id", roundId).maybeSingle(),
+    supabase.from("teams").select("event_id").eq("id", teamId).maybeSingle(),
+  ]);
+  if (round.error || team.error) return { ok: false, error: SAVE_FAILED };
+  if (!round.data || !team.data || round.data.event_id !== team.data.event_id) return { ok: false, error: BAD };
   // The generated type says p_gross is a number; null clears the hole.
   const { error } = await supabase.rpc("save_score", {
     p_round: roundId,
@@ -30,30 +37,30 @@ export async function saveScore(roundId: string, teamId: string, hole: number, g
     p_gross: gross as number,
     p_screen: "enter-cards",
   });
-  if (error) return { ok: false, error: SAVE_FAILED };
-  refresh();
+  if (error) return { ok: false, error: error.message.includes("cross_event_reference") ? BAD : SAVE_FAILED };
+  // No revalidate here: the cards view keeps its own state, and the other screens load fresh.
   return { ok: true };
 }
 
 /** Full, Front 9 only, Back 9 only or Called off. Scores already entered are kept. */
-export async function setRoundMode(roundId: string, mode: string): Promise<Result> {
+export async function setRoundMode(eventId: string, roundId: string, mode: string): Promise<Result> {
   if (!(await currentStaff())) return { ok: false, error: SIGNED_OUT };
   const m = z.enum(["full", "front", "back", "called_off"]).safeParse(mode);
-  if (!uuid.safeParse(roundId).success || !m.success) return { ok: false, error: BAD };
+  if (!uuid.safeParse(eventId).success || !uuid.safeParse(roundId).success || !m.success) return { ok: false, error: BAD };
   const supabase = await createServerSupabase();
-  const { data, error } = await supabase.from("rounds").update({ mode: m.data }).eq("id", roundId).select("id");
+  const { data, error } = await supabase.from("rounds").update({ mode: m.data }).eq("id", roundId).eq("event_id", eventId).select("id");
   if (error || !data?.length) return { ok: false, error: SAVE_FAILED };
   refresh();
   return { ok: true };
 }
 
 /** null = playing; otherwise WD, DQ or NS (no show). */
-export async function setTeamStatus(teamId: string, status: string | null): Promise<Result> {
+export async function setTeamStatus(eventId: string, teamId: string, status: string | null): Promise<Result> {
   if (!(await currentStaff())) return { ok: false, error: SIGNED_OUT };
   const s = z.enum(["WD", "DQ", "NS"]).nullable().safeParse(status);
-  if (!uuid.safeParse(teamId).success || !s.success) return { ok: false, error: BAD };
+  if (!uuid.safeParse(eventId).success || !uuid.safeParse(teamId).success || !s.success) return { ok: false, error: BAD };
   const supabase = await createServerSupabase();
-  const { data, error } = await supabase.from("teams").update({ status: s.data }).eq("id", teamId).is("deleted_at", null).select("id");
+  const { data, error } = await supabase.from("teams").update({ status: s.data }).eq("id", teamId).eq("event_id", eventId).is("deleted_at", null).select("id");
   if (error || !data?.length) return { ok: false, error: SAVE_FAILED };
   refresh();
   return { ok: true };
