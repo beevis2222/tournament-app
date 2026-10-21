@@ -1,0 +1,1 @@
+{"private":true,"workspaces":["scoring","web"],"scripts":{"test":"npm test -w scoring && npm test -w web","dev":"npm run dev -w web","e2e":"npm run e2e -w web"}}

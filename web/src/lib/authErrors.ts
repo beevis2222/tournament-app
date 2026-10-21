@@ -1,0 +1,17 @@
+export function friendlyAuthError(message: string): string {
+  if (message === "Database error saving new user") {
+    return "Ask the pro to add your email on the Staff screen first.";
+  }
+  if (message === "User already registered") {
+    return "That email already has a password. Sign in instead.";
+  }
+  if (message === "Invalid login credentials") {
+    return "That email and password don't match.";
+  }
+  return "Something went wrong signing in. Try again.";
+}
+
+// With "Confirm email" on, sign-up succeeds but returns no session until the link is clicked.
+export function signUpOutcome(data: { session: unknown | null }): "signed-in" | "check-email" {
+  return data.session ? "signed-in" : "check-email";
+}

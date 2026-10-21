@@ -137,7 +137,7 @@ Players never make an account. They scan the cart-sign QR code and enter their g
 | Phase | Deliverable | Why this order |
 |---|---|---|
 | **0. Foundation** ✅ started | `CLAUDE.md`, **scoring engine + tests** (`scoring/`), verified against `golf_math.py` | The math is the product. Prove it first, without any screens. |
-| **1. Shop-only 4-man scramble** | Events, field import, team draw or listed teams, enter cards, gross + net leaderboards, prizes, pairings and cart sign prints | Justin's pick. It's the simplest scoring (one score per team per hole) and fits outings, so it's a great first slice. |
+| **1. Shop-only 4-man scramble** ✅ built (not yet deployed) | Events, field import, team draw or listed teams, enter cards, gross + net leaderboards, prizes, pairings and cart sign prints | Justin's pick. It's the simplest scoring (one score per team per hole) and fits outings, so it's a great first slice. |
 | **2. Live** | Group PIN scoring on phones, realtime leaderboard, TV mode, public link | This is the jump past the prototype. |
 | **3. All formats** | Member-member (10-point matches + shootout), stroke play, match play brackets, skins, Stableford, the full print center | Builds on the same engine. |
 | **4. Polish and sell** | Offline scoring, AI setup, multiple clubs, billing, then GHIN through the USGA GPA program | Needed once a second club wants it. |
